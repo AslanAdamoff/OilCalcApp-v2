@@ -1,8 +1,9 @@
 /**
- * Density Corrector — API MPMS Chapter 11.1 (ASTM D1250)
+ * Density Corrector — API MPMS Chapter 11.1 (ASTM D1250) + Table 56
  * Implements Table 54B (Refined Products) and Table 54A (Crude Oil)
+ * ASTM Table 56: Buoyancy correction (KG Vacuum ↔ KG Air-Weighed)
  * 
- * This is a 1:1 port of DensityCorrector.swift
+ * Standards: API MPMS Chapter 11.1, Chapter 11.5.3
  */
 
 const K0_REFINED = 341.0957;
@@ -89,3 +90,36 @@ export function densityT(density15Val, temperature, product = 'refined') {
 export function vcf(density15Val, temperature, product = 'refined') {
     return calculateVCF(density15Val * 1000.0, temperature, product);
 }
+
+// ── ASTM Table 56 — Buoyancy Correction ──────────────────────
+// Converts between mass in vacuum and mass weighed in air
+// Air density = 0.0012 g/ml (standard conditions)
+
+const AIR_DENSITY = 0.0012; // g/ml = kg/l
+
+/**
+ * Convert mass in vacuum to mass in air (KG Vac → KG Air)
+ * ASTM Table 56: M_air = M_vac × (1 - ρ_air / ρ_product)
+ * @param {number} massVac - Mass in vacuum (kg)
+ * @param {number} density15 - Product density at 15°C (kg/l)
+ * @returns {number} Mass weighed in air (kg)
+ */
+export function massVacToAir(massVac, density15) {
+    if (density15 <= 0) return massVac;
+    const buoyancyFactor = 1 - (AIR_DENSITY / density15);
+    return massVac * buoyancyFactor;
+}
+
+/**
+ * Convert mass in air to mass in vacuum (KG Air → KG Vac)
+ * ASTM Table 56: M_vac = M_air / (1 - ρ_air / ρ_product)
+ * @param {number} massAir - Mass weighed in air (kg)
+ * @param {number} density15 - Product density at 15°C (kg/l)
+ * @returns {number} Mass in vacuum (kg)
+ */
+export function massAirToVac(massAir, density15) {
+    if (density15 <= 0) return massAir;
+    const buoyancyFactor = 1 - (AIR_DENSITY / density15);
+    return massAir / buoyancyFactor;
+}
+

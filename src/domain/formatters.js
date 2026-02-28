@@ -50,3 +50,28 @@ function formatWithGrouping(value, decimals) {
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     return parts.join('.');
 }
+
+/**
+ * Format loss percentage with color-coded sign
+ */
+export function formatLossPercent(value) {
+    const prefix = value >= 0 ? '+' : '';
+    return prefix + value.toFixed(3) + '%';
+}
+
+/**
+ * Format mass with unit label (KG Vac or KG Air)
+ */
+export function formatMassWithUnit(value, massType = 'vac') {
+    const formatted = formatWithGrouping(value, 2);
+    const unit = massType === 'air' ? 'kg (Air)' : 'kg (Vac)';
+    return `${formatted} ${unit}`;
+}
+
+/**
+ * Format VCF (Volume Correction Factor)
+ */
+export function formatVCF(value) {
+    return value.toFixed(5);
+}
+
