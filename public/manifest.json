@@ -1,0 +1,18 @@
+{
+    "name": "OilCalcApp",
+    "short_name": "OilCalcApp",
+    "description": "Professional Calculator for Oil & Petroleum Products",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0c1024",
+    "theme_color": "#0c1024",
+    "icons": [
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
