@@ -1875,7 +1875,7 @@ body {
   gap: 6px;
   padding: 8px 16px;
   border-radius: var(--radius-md);
-  background: var(--glass-bg);
+  background: var(--glass);
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-size: var(--font-sm);
@@ -1929,7 +1929,7 @@ body {
 }
 
 .drill-modal {
-  background: var(--glass-bg);
+  background: var(--glass);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
@@ -2000,7 +2000,7 @@ body {
 .drill-kpi {
   text-align: center;
   padding: var(--spacing-sm);
-  background: var(--glass-bg-strong);
+  background: var(--glass-strong);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
 }
@@ -2117,7 +2117,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg);
+  background: var(--bg-primary);
   z-index: 2000;
 }
 
@@ -2131,7 +2131,7 @@ body {
 }
 
 .login-card {
-  background: var(--glass-bg);
+  background: var(--glass);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   backdrop-filter: blur(20px);
@@ -2184,7 +2184,7 @@ body {
 
 .login-input {
   padding: 12px 14px;
-  background: var(--glass-bg-strong);
+  background: var(--glass-strong);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -2279,7 +2279,7 @@ body {
   display: flex;
   flex-direction: column;
   padding: 8px 10px;
-  background: var(--glass-bg-strong);
+  background: var(--glass-strong);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -2324,7 +2324,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 10px var(--spacing-md);
-  background: var(--glass-bg);
+  background: var(--glass);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
   position: sticky;
