@@ -11,16 +11,17 @@
 | Frontend | Vanilla JS + Vite 6 | No frameworks, SPA with tab navigation |
 | Styling | Vanilla CSS | Century Gothic font, dark/light themes, glassmorphism |
 | Charts | Custom SVG (`chart-engine.js`) | Line, bar, donut, stacked bar, sparkline — 0 deps |
-| Storage | localStorage | `ShipmentService` for CRUD |
-| Deploy | Firebase Hosting | `npx firebase deploy --only hosting` |
+| Auth | Firestore + SHA-256 | Custom auth, role-based access, session in localStorage |
+| Storage | Firebase Firestore | Shared collection, all users see same data |
+| Deploy | Firebase Hosting + Firestore | `npx firebase deploy` |
 | PDF | html2canvas + jsPDF | Dynamic import for code splitting |
 
 ## File Structure
 
 ```
 src/
-├── main.js                     # App entry, tab navigation (Shipment, Calc, Dashboard, History, Settings)
-├── styles/index.css            # All CSS (~2100 lines), responsive layout engine
+├── main.js                     # App entry, auth gate, role-based tab navigation
+├── styles/index.css            # All CSS (~2500 lines), responsive layout engine
 ├── components/
 │   └── chart-engine.js         # SVG chart library (line, bar, donut, stacked, sparkline)
 ├── data/
@@ -36,15 +37,19 @@ src/
 │   ├── formatters.js           # Number/date formatting utilities
 │   └── astm-tables.js          # ASTM D1250 volume correction tables
 ├── services/
-│   ├── shipment-service.js     # localStorage CRUD for shipments
+│   ├── firebase-config.js      # Firebase app + Firestore init
+│   ├── auth-service.js         # Firestore auth, roles, user CRUD, SHA-256 hashing
+│   ├── shipment-service.js     # Firestore CRUD for shipments (shared collection)
 │   ├── analytics-service.js    # KPIs, trends, division comparison, risk heatmap, alerts
 │   └── pdf-export.js           # PDF generation service
 └── pages/
+    ├── login-page.js           # Login form with demo account hints
     ├── shipment-page.js        # New shipment form (multi-point)
     ├── calculator-page.js      # Mass/volume conversion calculator
     ├── dashboard-page.js       # Analytics dashboard (KPIs, charts, drill-down, filters)
     ├── history-page.js         # Shipment history list
     ├── config-page.js          # Settings (demo data load/clear)
+    ├── admin-page.js           # User management (admin only)
     └── about-page.js           # About page with theme toggle
 ```
 
@@ -76,20 +81,19 @@ src/
 - [x] All Russian text → English (НПЗ → Petromidia Refinery)
 - [x] Century Gothic font consistency
 
+### Phase 3+4 — Auth + Firestore + Role-Based Views
+
+- [x] Firebase SDK integration (modular v10, tree-shakable)
+- [x] Firestore for shared shipment data (all users see same data)
+- [x] Firestore-based auth with SHA-256 hashed passwords
+- [x] Login page with demo account hints
+- [x] 6 default users (admin, ceo, manager, qclp, verifier, operator)
+- [x] Role-based tab navigation (admin=all, operator=shipment+calc+settings)
+- [x] Admin panel for user management (add/delete/change roles)
+- [x] User header bar with name, role badge, logout
+- [x] Firestore security rules (permanent, not 30-day test mode)
+
 ## Next Steps (Prioritized)
-
-### Phase 3 — Role-Based Views
-
-- [ ] Role selector in Settings (Manager, QCLP, Verifier, Operator)
-- [ ] Manager Dashboard — aggregated KPIs + subordinate divisions
-- [ ] QCLP Dashboard — loss focus, investigations, exceedances
-- [ ] Verifier Dashboard — validation queue, approval statuses
-
-### Phase 4 — Backend & Auth
-
-- [ ] Firebase Firestore (replace localStorage)
-- [ ] Firebase Auth (login/roles)
-- [ ] Real-time sync between devices
 
 ### Phase 5 — Advanced Features
 
@@ -97,10 +101,18 @@ src/
 - [ ] Trend comparison (month vs month, year vs year)
 - [ ] Custom report builder
 - [ ] Notification system for critical alerts
+- [ ] Role-specific dashboards (Manager/QCLP customized views)
+
+### Phase 6 — Production Hardening
+
+- [ ] Firestore security rules (restrict by role)
+- [ ] Password change functionality
+- [ ] Session expiry
+- [ ] Rate limiting
 
 ## Known Limitations
 
-- **localStorage only** — no multi-device sync, data lost on cache clear
-- **No authentication** — anyone can access any data
-- **Demo data** — must be loaded manually from Settings
+- **Firestore test rules** — currently `allow read, write: if true` (open access)
+- **Demo data** — must be loaded manually from Settings by admin
 - **PDF export** — captures current viewport, not custom report layout
+- **No password change** — passwords set at user creation
