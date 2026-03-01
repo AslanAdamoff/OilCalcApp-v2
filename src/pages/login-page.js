@@ -12,7 +12,7 @@ export function renderLoginPage(onLoginSuccess) {
         <div class="login-container">
             <div class="login-card">
                 <div class="login-header">
-                    <div class="login-logo">🛢️</div>
+                    <div class="login-logo"><img src="/logo.png" alt="OilCalcApp" class="login-logo-img"></div>
                     <h1 class="login-title">OilCalcApp</h1>
                     <p class="login-subtitle">Petroleum Loss Control & Monitoring</p>
                 </div>

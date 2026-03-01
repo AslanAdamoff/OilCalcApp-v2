@@ -2145,8 +2145,16 @@ body {
 }
 
 .login-logo {
-  font-size: 3rem;
   margin-bottom: var(--spacing-sm);
+  display: flex;
+  justify-content: center;
+}
+
+.login-logo-img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(255, 180, 0, 0.3));
 }
 
 .login-title {
