@@ -23,9 +23,11 @@ export function isDemoLoaded() {
 /**
  * Generate and save demo shipments
  */
-export function loadDemoData() {
+export async function loadDemoData() {
     const shipments = generateDemoShipments();
-    shipments.forEach(s => ShipmentService.save(s));
+    for (const s of shipments) {
+        await ShipmentService.save(s);
+    }
     localStorage.setItem(DEMO_KEY, 'true');
     return shipments.length;
 }

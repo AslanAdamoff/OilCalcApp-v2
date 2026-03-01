@@ -169,8 +169,8 @@ function setupExport(page) {
     });
 }
 
-function refreshDashboard(page) {
-    const allShipments = ShipmentService.loadAll();
+async function refreshDashboard(page) {
+    const allShipments = await ShipmentService.loadAll();
     const shipments = filterShipments(allShipments, currentFilters);
 
     renderKPIs(page, shipments, allShipments);

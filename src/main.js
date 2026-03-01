@@ -1,6 +1,6 @@
 /**
  * OilCalcApp Web — Main Entry Point
- * SPA with bottom tab navigation
+ * SPA with auth gate and role-based tab navigation
  */
 
 import './styles/index.css';
@@ -16,6 +16,9 @@ import { renderCalculatorPage } from './pages/calculator-page.js';
 import { renderDashboardPage } from './pages/dashboard-page.js';
 import { renderHistoryPage } from './pages/history-page.js';
 import { renderConfigPage } from './pages/config-page.js';
+import { renderAdminPage } from './pages/admin-page.js';
+import { renderLoginPage } from './pages/login-page.js';
+import { isAuthenticated, getCurrentUser, getAllowedTabs, logout } from './services/auth-service.js';
 
 // Professional SVG icons (24x24, stroke-based, currentColor)
 const icons = {
@@ -24,37 +27,36 @@ const icons = {
     dashboard: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="14" y="10" width="7" height="11" rx="1"/><rect x="3" y="13" width="7" height="8" rx="1"/></svg>',
     history: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    admin: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    logout: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
 };
 
-const tabs = [
+const allTabs = [
     { id: 'shipment', icon: icons.shipment, label: 'Shipment', render: renderShipmentPage },
     { id: 'calculator', icon: icons.calculator, label: 'Calc', render: renderCalculatorPage },
     { id: 'dashboard', icon: icons.dashboard, label: 'Dashboard', render: renderDashboardPage },
     { id: 'history', icon: icons.history, label: 'History', render: renderHistoryPage },
     { id: 'settings', icon: icons.settings, label: 'Settings', render: renderConfigPage },
+    { id: 'admin', icon: icons.admin, label: 'Users', render: renderAdminPage },
 ];
 
-let currentTab = 'shipment';
+let currentTab = '';
+let visibleTabs = [];
 
 /**
  * iOS Safari viewport height fix.
- * On iPhone Safari, CSS 100vh includes the area behind the toolbar,
- * making the actual visible area shorter. This uses window.innerHeight
- * which gives the TRUE visible viewport height.
- * We skip updates when the keyboard is open to prevent the tab bar jump.
  */
 let initialHeight = 0;
 let keyboardOpen = false;
 
 function setAppHeight() {
-    if (keyboardOpen) return; // Don't resize while keyboard is open
+    if (keyboardOpen) return;
     const vh = window.innerHeight;
     if (!initialHeight) initialHeight = vh;
     document.documentElement.style.setProperty('--app-height', `${vh}px`);
 }
 
 function init() {
-    // Set real viewport height immediately and on every resize/orientation change
     setAppHeight();
     window.addEventListener('resize', () => {
         if (!keyboardOpen) setAppHeight();
@@ -63,14 +65,13 @@ function init() {
         setTimeout(setAppHeight, 100);
     });
 
-    // Also listen to visualViewport resize for iOS Safari toolbar show/hide
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', () => {
             if (!keyboardOpen) setAppHeight();
         });
     }
 
-    // Hide tab bar when keyboard opens (input focus)
+    // Keyboard handling
     document.addEventListener('focusin', (e) => {
         const tag = e.target.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
@@ -86,21 +87,18 @@ function init() {
             keyboardOpen = false;
             const tabBar = document.getElementById('tabBar');
             if (tabBar) tabBar.style.display = '';
-            // Restore correct height after keyboard closes
             setTimeout(setAppHeight, 300);
         }
     });
 
-    const app = document.getElementById('app');
-    app.innerHTML = `
-    <div class="page-container" id="pageContainer"></div>
-    <nav class="tab-bar" id="tabBar"></nav>
-  `;
+    // Check auth
+    if (isAuthenticated()) {
+        showApp();
+    } else {
+        showLogin();
+    }
 
-    renderTabBar();
-    switchTab(currentTab);
-
-    // Dismiss splash screen after minimum 2 seconds
+    // Dismiss splash
     const splashMinTime = 2000;
     const startTime = performance.timing.navigationStart || Date.now();
     const elapsed = Date.now() - startTime;
@@ -115,9 +113,50 @@ function init() {
     }, remaining);
 }
 
+function showLogin() {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    app.appendChild(renderLoginPage((user) => {
+        showApp();
+    }));
+}
+
+function showApp() {
+    const app = document.getElementById('app');
+    const user = getCurrentUser();
+    const allowedTabIds = getAllowedTabs();
+
+    visibleTabs = allTabs.filter(t => allowedTabIds.includes(t.id));
+    currentTab = visibleTabs[0]?.id || 'shipment';
+
+    app.innerHTML = `
+        <div class="app-header" id="appHeader">
+            <div class="app-header-user">
+                <span class="user-name">${user?.name || user?.email || 'User'}</span>
+                <span class="user-role-badge">${user?.role || ''}</span>
+            </div>
+            <button class="btn-icon logout-btn" id="logoutBtn" title="Sign Out">
+                ${icons.logout}
+            </button>
+        </div>
+        <div class="page-container" id="pageContainer"></div>
+        <nav class="tab-bar" id="tabBar"></nav>
+    `;
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        if (confirm('Sign out?')) {
+            logout();
+            showLogin();
+        }
+    });
+
+    renderTabBar();
+    switchTab(currentTab);
+}
+
 function renderTabBar() {
     const tabBar = document.getElementById('tabBar');
-    tabBar.innerHTML = tabs.map(tab => `
+    tabBar.innerHTML = visibleTabs.map(tab => `
     <button class="tab-btn ${tab.id === currentTab ? 'active' : ''}" data-tab="${tab.id}">
       <span class="tab-icon">${tab.icon}</span>
       <span class="tab-label">${tab.label}</span>
@@ -135,16 +174,14 @@ function switchTab(tabId) {
     container.innerHTML = '';
     container.scrollTop = 0;
 
-    const tab = tabs.find(t => t.id === tabId);
+    const tab = visibleTabs.find(t => t.id === tabId);
     if (tab) {
         container.appendChild(tab.render());
     }
 
-    // Update tab bar active states
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
 }
 
-// Initialize the app
 document.addEventListener('DOMContentLoaded', init);

@@ -153,24 +153,24 @@ export function renderConfigPage() {
 
         // Demo data
         const demoStatus = page.querySelector('#demoStatus');
-        const updateDemoStatus = () => {
-            const count = ShipmentService.loadAll().length;
-            if (demoStatus) demoStatus.textContent = `${count} shipments in storage`;
+        const updateDemoStatus = async () => {
+            const all = await ShipmentService.loadAll();
+            if (demoStatus) demoStatus.textContent = `${all.length} shipments in storage`;
         };
         updateDemoStatus();
 
-        page.querySelector('#loadDemoBtn')?.addEventListener('click', () => {
-            const count = loadDemoData();
-            updateDemoStatus();
+        page.querySelector('#loadDemoBtn')?.addEventListener('click', async () => {
+            const count = await loadDemoData();
+            await updateDemoStatus();
             showError(`${count} demo shipments loaded`);
         });
 
         page.querySelector('#clearDataBtn')?.addEventListener('click', async () => {
             const confirmed = await showConfirm({ title: 'Clear All Data', message: 'Delete all shipments and history?' });
             if (confirmed) {
-                ShipmentService.clearAll();
+                await ShipmentService.clearAll();
                 clearDemoFlag();
-                updateDemoStatus();
+                await updateDemoStatus();
                 showError('All data cleared');
             }
         });

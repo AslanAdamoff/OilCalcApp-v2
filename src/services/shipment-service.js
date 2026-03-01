@@ -1,51 +1,66 @@
 /**
- * Shipment Service — CRUD for shipments in localStorage
- * Same pattern as existing HistoryService
+ * Shipment Service — CRUD for shipments in Firestore
+ * Shared collection: all users see the same data
  */
 
-const STORAGE_KEY = 'oilcalc_shipments';
+import { db } from './firebase-config.js';
+import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import { getCurrentUser } from './auth-service.js';
+
+const COLLECTION = 'shipments';
 
 export const ShipmentService = {
-    loadAll() {
+    async loadAll() {
         try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
+            const snapshot = await getDocs(
+                query(collection(db, COLLECTION), orderBy('date', 'desc'))
+            );
+            return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (e) {
-            console.error('Failed to load shipments:', e);
-            return [];
+            console.error('Failed to load shipments from Firestore:', e);
+            // Fallback to localStorage
+            return this._loadLocal();
         }
     },
 
-    save(shipment) {
-        const shipments = this.loadAll();
-        const index = shipments.findIndex(s => s.id === shipment.id);
-        if (index >= 0) {
-            shipments[index] = shipment;
-        } else {
-            shipments.unshift(shipment);
+    async save(shipment) {
+        try {
+            const user = getCurrentUser();
+            const data = {
+                ...shipment,
+                updatedAt: new Date().toISOString(),
+            };
+            if (!shipment.createdBy) {
+                data.createdBy = user?.email || 'unknown';
+            }
+            await setDoc(doc(db, COLLECTION, shipment.id), data);
+        } catch (e) {
+            console.error('Failed to save shipment to Firestore:', e);
+            // Fallback: save locally
+            this._saveLocal(shipment);
         }
-        this._persist(shipments);
     },
 
-    remove(id) {
-        const shipments = this.loadAll().filter(s => s.id !== id);
-        this._persist(shipments);
+    async remove(id) {
+        try {
+            await deleteDoc(doc(db, COLLECTION, id));
+        } catch (e) {
+            console.error('Failed to remove shipment from Firestore:', e);
+        }
     },
 
-    getById(id) {
-        return this.loadAll().find(s => s.id === id) || null;
+    async getById(id) {
+        try {
+            const snap = await getDoc(doc(db, COLLECTION, id));
+            return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+        } catch (e) {
+            console.error('Failed to get shipment:', e);
+            return null;
+        }
     },
 
-    getByDivision(divisionCode) {
-        return this.loadAll().filter(s => s.division === divisionCode);
-    },
-
-    getByStatus(lossStatus) {
-        return this.loadAll().filter(s => s.lossStatus === lossStatus);
-    },
-
-    getStats() {
-        const all = this.loadAll();
+    async getStats() {
+        const all = await this.loadAll();
         return {
             total: all.length,
             completed: all.filter(s => s.status === 'completed').length,
@@ -55,15 +70,33 @@ export const ShipmentService = {
         };
     },
 
-    clearAll() {
-        this._persist([]);
+    async clearAll() {
+        try {
+            const snapshot = await getDocs(collection(db, COLLECTION));
+            const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
+            await Promise.all(deletePromises);
+        } catch (e) {
+            console.error('Failed to clear shipments:', e);
+        }
     },
 
-    _persist(shipments) {
+    // ── localStorage fallback (offline mode) ──
+    _loadLocal() {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(shipments));
+            const data = localStorage.getItem('oilcalc_shipments');
+            return data ? JSON.parse(data) : [];
+        } catch { return []; }
+    },
+
+    _saveLocal(shipment) {
+        try {
+            const shipments = this._loadLocal();
+            const index = shipments.findIndex(s => s.id === shipment.id);
+            if (index >= 0) shipments[index] = shipment;
+            else shipments.unshift(shipment);
+            localStorage.setItem('oilcalc_shipments', JSON.stringify(shipments));
         } catch (e) {
-            console.error('Failed to save shipments:', e);
+            console.error('Failed to save locally:', e);
         }
     },
 };
