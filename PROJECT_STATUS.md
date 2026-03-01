@@ -1,6 +1,6 @@
 # OilCalcApp v2.0 — Project Status
 
-> **Last updated:** 2026-03-01
+> **Last updated:** 2026-03-01 (Phase 5A)
 > **Live:** <https://oilcalcapp-web.web.app>
 > **Repo:** <https://github.com/AslanAdamoff/OilCalcApp-v2>
 
@@ -93,11 +93,18 @@ src/
 - [x] User header bar with name, role badge, logout
 - [x] Firestore security rules (permanent, not 30-day test mode)
 
+### Phase 5A — Operation Details
+
+- [x] Operation Details page (full shipment detail view)
+- [x] Clickable rows in Dashboard Recent Operations → detail view
+- [x] Clickable rows in drill-down tables → detail view
+- [x] Back navigation (detail → dashboard)
+- [x] Glassmorphism CSS, responsive layout, dark/light theme
+
 ## Next Steps (Prioritized)
 
 ### Phase 5 — Advanced Features
 
-- [ ] Operation Details screen (full shipment detail view)
 - [ ] Trend comparison (month vs month, year vs year)
 - [ ] Custom report builder
 - [ ] Notification system for critical alerts
