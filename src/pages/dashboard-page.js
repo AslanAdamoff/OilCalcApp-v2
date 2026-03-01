@@ -12,8 +12,10 @@ import { getDivision, divisions } from '../data/divisions.js';
 import { products } from '../data/products.js';
 import { getRoute, getTransportLabel } from '../data/routes.js';
 import { getLocation } from '../data/locations.js';
+import { renderOperationDetails } from './operation-details-page.js';
 
 let currentFilters = { period: 'all', division: 'all', product: 'all', status: 'all' };
+let _drillShipments = []; // Shipments in current drill-down view
 
 export function renderDashboardPage() {
     const page = document.createElement('div');
@@ -410,7 +412,7 @@ function renderRecentOps(page, shipments) {
             : '—';
 
         return `
-                    <div class="ops-table-row">
+                    <div class="ops-table-row clickable" data-shipment-id="${s.id}">
                         <span>${status.icon}</span>
                         <span class="ops-division">${division?.code || s.division}</span>
                         <span class="ops-product">${product?.name || s.product}</span>
@@ -422,6 +424,15 @@ function renderRecentOps(page, shipments) {
     }).join('')}
         </div>
     `;
+
+    // Click handler for Recent Ops rows
+    container.querySelectorAll('.ops-table-row.clickable').forEach(row => {
+        row.addEventListener('click', () => {
+            const shipmentId = row.dataset.shipmentId;
+            const shipment = recent.find(s => s.id === shipmentId);
+            if (shipment) showOperationDetail(shipment);
+        });
+    });
 }
 
 // ── Drill-Down Modal ──────────────────────────────────────────
@@ -436,6 +447,20 @@ function showDrillDown(page, title, htmlContent) {
     bodyEl.innerHTML = htmlContent;
     modal.style.display = 'flex';
     modal.classList.add('drill-active');
+
+    // Drill-down row click handlers
+    bodyEl.querySelectorAll('.drill-table-row.clickable').forEach(row => {
+        row.addEventListener('click', () => {
+            try {
+                const data = JSON.parse(row.dataset.drillShipment);
+                const shipment = _drillShipments.find(s => s.id === data.id);
+                if (shipment) {
+                    closeDrillDown(page);
+                    setTimeout(() => showOperationDetail(shipment), 250);
+                }
+            } catch (e) { /* ignore */ }
+        });
+    });
 }
 
 function closeDrillDown(page) {
@@ -449,6 +474,7 @@ function closeDrillDown(page) {
 function showKPIDrillDown(page, key, shipments, kpis) {
     let title = '';
     let rows = [];
+    _drillShipments = shipments; // Store for click handlers
 
     switch (key) {
         case 'total':
@@ -508,6 +534,7 @@ function showKPIDrillDown(page, key, shipments, kpis) {
 function showDivisionDrillDown(page, divCode, allShipments) {
     const div = getDivision(divCode);
     const divShipments = allShipments.filter(s => s.division === divCode);
+    _drillShipments = divShipments; // Store for click handlers
     const kpis = getKPIs(divShipments);
 
     const html = `
@@ -544,7 +571,7 @@ function formatShipmentRow(s, extra = null) {
         : '—';
 
     return `
-        <div class="drill-table-row">
+        <div class="drill-table-row clickable" data-drill-shipment='${JSON.stringify({ id: s.id })}'>
             <span>${dateStr}</span>
             <span>${s.division}</span>
             <span>${product?.name || s.product}</span>
@@ -553,6 +580,21 @@ function formatShipmentRow(s, extra = null) {
             ${extra ? `<span style="font-weight:600">${extra}</span>` : ''}
         </div>
     `;
+}
+
+// ── Operation Detail Navigation ──────────────────────────────
+
+function showOperationDetail(shipment) {
+    const container = document.getElementById('pageContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    container.scrollTop = 0;
+    container.appendChild(renderOperationDetails(shipment, () => {
+        // Return to dashboard
+        container.innerHTML = '';
+        container.scrollTop = 0;
+        container.appendChild(renderDashboardPage());
+    }));
 }
 
 // ── PDF Export ────────────────────────────────────────────────
