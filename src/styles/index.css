@@ -2151,10 +2151,11 @@ body {
 }
 
 .login-logo-img {
-  width: 80px;
-  height: 80px;
+  width: 90px;
+  height: 90px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 12px rgba(255, 180, 0, 0.3));
+  border-radius: var(--radius-lg);
+  filter: drop-shadow(0 4px 16px rgba(255, 180, 0, 0.4));
 }
 
 .login-title {
