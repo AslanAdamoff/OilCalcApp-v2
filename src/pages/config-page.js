@@ -8,6 +8,8 @@ import { products } from '../data/products.js';
 import { defaultLocations, getAllLocations, addCustomLocation, removeCustomLocation, LocationType } from '../data/locations.js';
 import { defaultRoutes, getAllRoutes, addCustomRoute, removeCustomRoute, TransportType, getTransportLabel } from '../data/routes.js';
 import { internalThresholds, operationLabels } from '../data/loss-thresholds.js';
+import { loadDemoData, isDemoLoaded, clearDemoFlag } from '../data/demo-data.js';
+import { ShipmentService } from '../services/shipment-service.js';
 import { showConfirm, showPrompt, showError } from './shared.js';
 
 export function renderConfigPage() {
@@ -84,6 +86,19 @@ export function renderConfigPage() {
             </div>
         </div>
         
+        <!-- Demo Data -->
+        <div class="card">
+            <div class="card-title">Demo Data</div>
+            <div style="margin-top: var(--spacing-sm); font-size: var(--font-sm); color: var(--text-secondary);">
+                Load realistic demo shipments to see the Analytics Dashboard in action.
+            </div>
+            <div style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-md);">
+                <button class="btn-secondary" id="loadDemoBtn" style="flex:1">📊 Load Demo Data</button>
+                <button class="btn-secondary" id="clearDataBtn" style="flex:1; color: var(--red);">🗑️ Clear All Data</button>
+            </div>
+            <div id="demoStatus" style="font-size: var(--font-xs); color: var(--text-muted); margin-top: var(--spacing-xs); text-align: center;"></div>
+        </div>
+        
         <!-- App Version -->
         <div style="text-align: center; margin-top: var(--spacing-xl); color: var(--text-muted); font-size: var(--font-xs);">
             OilCalcApp v2.0 — Petroleum Product Loss Control
@@ -134,6 +149,30 @@ export function renderConfigPage() {
             });
             page.querySelector('#routesList').innerHTML = renderRoutesList();
             showError('Route added');
+        });
+
+        // Demo data
+        const demoStatus = page.querySelector('#demoStatus');
+        const updateDemoStatus = () => {
+            const count = ShipmentService.loadAll().length;
+            if (demoStatus) demoStatus.textContent = `${count} shipments in storage`;
+        };
+        updateDemoStatus();
+
+        page.querySelector('#loadDemoBtn')?.addEventListener('click', () => {
+            const count = loadDemoData();
+            updateDemoStatus();
+            showError(`${count} demo shipments loaded`);
+        });
+
+        page.querySelector('#clearDataBtn')?.addEventListener('click', async () => {
+            const confirmed = await showConfirm({ title: 'Clear All Data', message: 'Delete all shipments and history?' });
+            if (confirmed) {
+                ShipmentService.clearAll();
+                clearDemoFlag();
+                updateDemoStatus();
+                showError('All data cleared');
+            }
         });
     }, 0);
 

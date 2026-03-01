@@ -4,11 +4,11 @@
  */
 
 export const divisions = [
-    { code: 'PEM', name: 'Petromidia', nameRu: 'Петромидия', country: 'RO', countryName: 'Romania' },
-    { code: 'DWS', name: 'Downstream Romania', nameRu: 'Даунстрим Румыния', country: 'RO', countryName: 'Romania' },
-    { code: 'RPG', name: 'Rompetrol Georgia', nameRu: 'Ромпетрол Грузия', country: 'GE', countryName: 'Georgia' },
-    { code: 'RPB', name: 'Rompetrol Bulgaria', nameRu: 'Ромпетрол Болгария', country: 'BG', countryName: 'Bulgaria' },
-    { code: 'RPM', name: 'Rompetrol Moldova', nameRu: 'Ромпетрол Молдова', country: 'MD', countryName: 'Moldova' },
+    { code: 'PEM', name: 'Petromidia', country: 'RO', countryName: 'Romania' },
+    { code: 'DWS', name: 'Downstream Romania', country: 'RO', countryName: 'Romania' },
+    { code: 'RPG', name: 'Rompetrol Georgia', country: 'GE', countryName: 'Georgia' },
+    { code: 'RPB', name: 'Rompetrol Bulgaria', country: 'BG', countryName: 'Bulgaria' },
+    { code: 'RPM', name: 'Rompetrol Moldova', country: 'MD', countryName: 'Moldova' },
 ];
 
 /** Get division by code */

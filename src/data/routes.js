@@ -12,11 +12,11 @@ export const TransportType = {
 };
 
 export const transportLabels = {
-    vessel: { name: 'Vessel (Ship)', nameRu: 'Корабль/Танкер', icon: '🚢' },
-    barge: { name: 'Barge', nameRu: 'Баржа', icon: '🚢' },
-    pipeline: { name: 'Pipeline', nameRu: 'Трубопровод', icon: '🔧' },
-    rail: { name: 'Rail (RTC)', nameRu: 'Ж/Д цистерна', icon: '🚂' },
-    truck: { name: 'Truck', nameRu: 'Автоцистерна', icon: '🚛' },
+    vessel: { name: 'Vessel (Ship)', icon: '🚢' },
+    barge: { name: 'Barge', icon: '🚢' },
+    pipeline: { name: 'Pipeline', icon: '🔧' },
+    rail: { name: 'Rail (RTC)', icon: '🚂' },
+    truck: { name: 'Truck', icon: '🚛' },
 };
 
 const STORAGE_KEY = 'oilcalc_custom_routes';
@@ -24,28 +24,28 @@ const STORAGE_KEY = 'oilcalc_custom_routes';
 /** Default routes from the KMG logistics network */
 export const defaultRoutes = [
     // Romania → Georgia
-    { id: 'npz_to_batumi_port', from: 'npz_petromidia', to: 'port_batumi', transport: TransportType.VESSEL, name: 'НПЗ → Порт Батуми', division: 'RPG' },
+    { id: 'npz_to_batumi_port', from: 'npz_petromidia', to: 'port_batumi', transport: TransportType.VESSEL, name: 'Petromidia → Port Batumi', division: 'RPG' },
 
     // Georgia internal
-    { id: 'batumi_port_to_depot', from: 'port_batumi', to: 'depot_batumi', transport: TransportType.PIPELINE, name: 'Порт → Депо Батуми', division: 'RPG' },
-    { id: 'batumi_to_tbilisi', from: 'depot_batumi', to: 'depot_tbilisi', transport: TransportType.RAIL, name: 'Депо Батуми → Депо Тбилиси (ЖД)', division: 'RPG' },
-    { id: 'batumi_to_tbilisi_truck', from: 'depot_batumi', to: 'depot_tbilisi', transport: TransportType.TRUCK, name: 'Депо Батуми → Депо Тбилиси (Авто)', division: 'RPG' },
-    { id: 'batumi_to_azs', from: 'depot_batumi', to: 'azs_geo', transport: TransportType.TRUCK, name: 'Депо Батуми → АЗС Грузия', division: 'RPG' },
-    { id: 'tbilisi_to_azs', from: 'depot_tbilisi', to: 'azs_geo', transport: TransportType.TRUCK, name: 'Депо Тбилиси → АЗС Грузия', division: 'RPG' },
+    { id: 'batumi_port_to_depot', from: 'port_batumi', to: 'depot_batumi', transport: TransportType.PIPELINE, name: 'Port Batumi → Depot Batumi', division: 'RPG' },
+    { id: 'batumi_to_tbilisi', from: 'depot_batumi', to: 'depot_tbilisi', transport: TransportType.RAIL, name: 'Depot Batumi → Depot Tbilisi (Rail)', division: 'RPG' },
+    { id: 'batumi_to_tbilisi_truck', from: 'depot_batumi', to: 'depot_tbilisi', transport: TransportType.TRUCK, name: 'Depot Batumi → Depot Tbilisi (Truck)', division: 'RPG' },
+    { id: 'batumi_to_azs', from: 'depot_batumi', to: 'azs_geo', transport: TransportType.TRUCK, name: 'Depot Batumi → Gas Stations Georgia', division: 'RPG' },
+    { id: 'tbilisi_to_azs', from: 'depot_tbilisi', to: 'azs_geo', transport: TransportType.TRUCK, name: 'Depot Tbilisi → Gas Stations Georgia', division: 'RPG' },
 
     // Romania internal
-    { id: 'npz_to_depot_ro_rail', from: 'npz_petromidia', to: 'depot_ro_1', transport: TransportType.RAIL, name: 'НПЗ → Депо Румыния (ЖД)', division: 'DWS' },
-    { id: 'npz_to_depot_ro_truck', from: 'npz_petromidia', to: 'depot_ro_1', transport: TransportType.TRUCK, name: 'НПЗ → Депо Румыния (Авто)', division: 'DWS' },
-    { id: 'npz_to_azs_ro', from: 'npz_petromidia', to: 'azs_ro', transport: TransportType.TRUCK, name: 'НПЗ → АЗС Румыния', division: 'PEM' },
+    { id: 'npz_to_depot_ro_rail', from: 'npz_petromidia', to: 'depot_ro_1', transport: TransportType.RAIL, name: 'Petromidia → Depot Romania (Rail)', division: 'DWS' },
+    { id: 'npz_to_depot_ro_truck', from: 'npz_petromidia', to: 'depot_ro_1', transport: TransportType.TRUCK, name: 'Petromidia → Depot Romania (Truck)', division: 'DWS' },
+    { id: 'npz_to_azs_ro', from: 'npz_petromidia', to: 'azs_ro', transport: TransportType.TRUCK, name: 'Petromidia → Gas Stations Romania', division: 'PEM' },
 
     // Romania → Bulgaria
-    { id: 'npz_to_ruse', from: 'npz_petromidia', to: 'depot_ruse', transport: TransportType.BARGE, name: 'НПЗ → Депо Русе (по воде)', division: 'RPB' },
-    { id: 'ruse_to_azs', from: 'depot_ruse', to: 'azs_bg', transport: TransportType.TRUCK, name: 'Депо Русе → АЗС Болгария', division: 'RPB' },
+    { id: 'npz_to_ruse', from: 'npz_petromidia', to: 'depot_ruse', transport: TransportType.BARGE, name: 'Petromidia → Depot Ruse (Barge)', division: 'RPB' },
+    { id: 'ruse_to_azs', from: 'depot_ruse', to: 'azs_bg', transport: TransportType.TRUCK, name: 'Depot Ruse → Gas Stations Bulgaria', division: 'RPB' },
 
     // Romania → Moldova
-    { id: 'depot_ro_to_chisinau', from: 'depot_ro_1', to: 'depot_chisinau', transport: TransportType.RAIL, name: 'Депо Румыния → Депо Кишинёв (ЖД)', division: 'RPM' },
-    { id: 'depot_ro_to_chisinau_truck', from: 'depot_ro_1', to: 'depot_chisinau', transport: TransportType.TRUCK, name: 'Депо Румыния → Депо Кишинёв (Авто)', division: 'RPM' },
-    { id: 'chisinau_to_azs', from: 'depot_chisinau', to: 'azs_md', transport: TransportType.TRUCK, name: 'Депо Кишинёв → АЗС Молдова', division: 'RPM' },
+    { id: 'depot_ro_to_chisinau', from: 'depot_ro_1', to: 'depot_chisinau', transport: TransportType.RAIL, name: 'Depot Romania → Depot Chișinău (Rail)', division: 'RPM' },
+    { id: 'depot_ro_to_chisinau_truck', from: 'depot_ro_1', to: 'depot_chisinau', transport: TransportType.TRUCK, name: 'Depot Romania → Depot Chișinău (Truck)', division: 'RPM' },
+    { id: 'chisinau_to_azs', from: 'depot_chisinau', to: 'azs_md', transport: TransportType.TRUCK, name: 'Depot Chișinău → Gas Stations Moldova', division: 'RPM' },
 ];
 
 /** Get all routes (defaults + custom) */

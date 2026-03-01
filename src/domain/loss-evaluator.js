@@ -109,13 +109,13 @@ export function evaluateLoss({
 export function getLossStatusDisplay(status) {
     switch (status) {
         case LossStatus.WITHIN_NORM:
-            return { icon: '✅', label: 'Within Norm', labelRu: 'В норме', cssClass: 'status-ok', color: '#22c55e' };
+            return { icon: '✅', label: 'Within Norm', cssClass: 'status-ok', color: '#22c55e' };
         case LossStatus.WARNING:
-            return { icon: '⚠️', label: 'Warning', labelRu: 'Внимание', cssClass: 'status-warning', color: '#f59e0b' };
+            return { icon: '⚠️', label: 'Warning', cssClass: 'status-warning', color: '#f59e0b' };
         case LossStatus.CRITICAL:
-            return { icon: '🔴', label: 'Critical', labelRu: 'Критично', cssClass: 'status-critical', color: '#ef4444' };
+            return { icon: '🔴', label: 'Critical', cssClass: 'status-critical', color: '#ef4444' };
         default:
-            return { icon: '⬜', label: 'Not Evaluated', labelRu: 'Не оценено', cssClass: 'status-none', color: '#6b7280' };
+            return { icon: '⬜', label: 'Not Evaluated', cssClass: 'status-none', color: '#6b7280' };
     }
 }
 
