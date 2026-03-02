@@ -101,14 +101,14 @@ src/
 - [x] Back navigation (detail → dashboard)
 - [x] Glassmorphism CSS, responsive layout, dark/light theme
 
-## Next Steps (Prioritized)
-
 ### Phase 5 — Advanced Features
 
-- [ ] Trend comparison (month vs month, year vs year)
-- [ ] Custom report builder
-- [ ] Notification system for critical alerts
-- [ ] Role-specific dashboards (Manager/QCLP customized views)
+- [x] Trend comparison widget (MoM / YoY toggle, 6 delta KPI cards, grouped bar chart)
+- [x] Custom report builder (modal, section selection, date range, filters, PDF export)
+- [x] Notification system (bell icon, alert detection, localStorage tracking, mark-as-read)
+- [x] Role-specific dashboards (conditional widget visibility per role)
+
+## Next Steps (Prioritized)
 
 ### Phase 6 — Production Hardening
 
@@ -117,9 +117,14 @@ src/
 - [ ] Session expiry
 - [ ] Rate limiting
 
+### Phase 7 — Future
+
+- [ ] Email/Slack alerting for critical shipments
+- [ ] Multi-language support (EN/RU/RO)
+- [ ] Offline mode with sync
+
 ## Known Limitations
 
 - **Firestore test rules** — currently `allow read, write: if true` (open access)
 - **Demo data** — must be loaded manually from Settings by admin
-- **PDF export** — captures current viewport, not custom report layout
 - **No password change** — passwords set at user creation
