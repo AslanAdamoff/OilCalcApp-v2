@@ -9,6 +9,12 @@ export default defineConfig({
         sourcemap: false,
         cssCodeSplit: false,
     },
+    optimizeDeps: {
+        include: [
+            'firebase/app',
+            'firebase/firestore',
+        ],
+    },
     server: {
         port: 5173,
         open: false,

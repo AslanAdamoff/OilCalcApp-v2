@@ -306,6 +306,66 @@ export function renderStackedBarChart(container, data, options = {}) {
 }
 
 /**
+ * Grouped Bar Chart — Paired bars for period comparison
+ * @param {HTMLElement} container
+ * @param {Array} data - [{ label, current, previous }]
+ * @param {Object} options - { height, suffix, currentLabel, previousLabel }
+ */
+export function renderGroupedBarChart(container, data, options = {}) {
+    const { height = 220, suffix = '%', currentLabel = 'Current', previousLabel = 'Previous' } = options;
+    if (!data || data.length === 0) { container.innerHTML = '<div class="chart-empty">No data</div>'; return; }
+
+    const W = container.clientWidth || 400;
+    const H = height;
+    const pad = { top: 30, right: 20, bottom: 40, left: 50 };
+    const chartW = W - pad.left - pad.right;
+    const chartH = H - pad.top - pad.bottom;
+
+    const maxVal = Math.max(...data.flatMap(d => [d.current, d.previous]), 0.001);
+    const groupW = chartW / data.length;
+    const barW = Math.min(20, (groupW - 12) / 2);
+
+    // Grid
+    const gridLines = [];
+    const gridLabels = [];
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + (chartH / 4) * i;
+        const val = maxVal - (maxVal / 4) * i;
+        gridLines.push(`<line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}" stroke="${getGridColor()}" stroke-dasharray="4,4"/>`);
+        gridLabels.push(`<text x="${pad.left - 8}" y="${y + 4}" fill="${getMutedColor()}" font-size="10" text-anchor="end" font-family="var(--font-family)">${val.toFixed(val < 1 ? 3 : 1)}${suffix}</text>`);
+    }
+
+    const bars = data.map((d, i) => {
+        const gx = pad.left + i * groupW + groupW / 2;
+        const hPrev = (d.previous / maxVal) * chartH;
+        const hCur = (d.current / maxVal) * chartH;
+
+        return `
+            <rect x="${gx - barW - 2}" y="${pad.top + chartH - hPrev}" width="${barW}" height="${hPrev}" rx="3" fill="${COLORS.blue}" opacity="0.7">
+                <animate attributeName="height" from="0" to="${hPrev}" dur="0.6s" fill="freeze"/>
+                <animate attributeName="y" from="${pad.top + chartH}" to="${pad.top + chartH - hPrev}" dur="0.6s" fill="freeze"/>
+            </rect>
+            <rect x="${gx + 2}" y="${pad.top + chartH - hCur}" width="${barW}" height="${hCur}" rx="3" fill="${COLORS.primary}" opacity="0.85">
+                <animate attributeName="height" from="0" to="${hCur}" dur="0.6s" fill="freeze"/>
+                <animate attributeName="y" from="${pad.top + chartH}" to="${pad.top + chartH - hCur}" dur="0.6s" fill="freeze"/>
+            </rect>
+            <text x="${gx}" y="${H - 8}" fill="${getMutedColor()}" font-size="11" text-anchor="middle" font-family="var(--font-family)">${d.label}</text>
+        `;
+    });
+
+    // Legend
+    const legendY = 12;
+    const legend = `
+        <rect x="${W - 180}" y="${legendY - 8}" width="10" height="10" rx="2" fill="${COLORS.blue}" opacity="0.7"/>
+        <text x="${W - 166}" y="${legendY}" fill="${getSubTextColor()}" font-size="10" font-family="var(--font-family)">${previousLabel}</text>
+        <rect x="${W - 95}" y="${legendY - 8}" width="10" height="10" rx="2" fill="${COLORS.primary}" opacity="0.85"/>
+        <text x="${W - 81}" y="${legendY}" fill="${getSubTextColor()}" font-size="10" font-family="var(--font-family)">${currentLabel}</text>
+    `;
+
+    container.innerHTML = `<svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${gridLines.join('')}${gridLabels.join('')}${bars.join('')}${legend}</svg>`;
+}
+
+/**
  * Mini Sparkline — for KPI cards
  */
 export function renderSparkline(container, values, options = {}) {
@@ -325,3 +385,4 @@ export function renderSparkline(container, values, options = {}) {
         </svg>
     `;
 }
+

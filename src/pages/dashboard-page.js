@@ -4,8 +4,8 @@
  */
 
 import { ShipmentService } from '../services/shipment-service.js';
-import { filterShipments, getKPIs, getMonthlyTrend, getDivisionComparison, getProductBreakdown, getCriticalAlerts, getRiskHeatmap } from '../services/analytics-service.js';
-import { renderLineChart, renderBarChart, renderDonutChart, renderStackedBarChart, renderSparkline } from '../components/chart-engine.js';
+import { filterShipments, getKPIs, getMonthlyTrend, getDivisionComparison, getProductBreakdown, getCriticalAlerts, getRiskHeatmap, getTrendComparison } from '../services/analytics-service.js';
+import { renderLineChart, renderBarChart, renderDonutChart, renderStackedBarChart, renderSparkline, renderGroupedBarChart } from '../components/chart-engine.js';
 import { getLossStatusDisplay } from '../domain/loss-evaluator.js';
 import { getProduct } from '../data/products.js';
 import { getDivision, divisions } from '../data/divisions.js';
@@ -13,9 +13,27 @@ import { products } from '../data/products.js';
 import { getRoute, getTransportLabel } from '../data/routes.js';
 import { getLocation } from '../data/locations.js';
 import { renderOperationDetails } from './operation-details-page.js';
+import { openReportBuilder } from './report-builder.js';
+import { getCurrentUser } from '../services/auth-service.js';
 
 let currentFilters = { period: 'all', division: 'all', product: 'all', status: 'all' };
 let _drillShipments = []; // Shipments in current drill-down view
+
+/**
+ * Role-based dashboard configuration
+ * Determines which widgets each role can see
+ */
+function getRoleDashboardConfig(role) {
+    const configs = {
+        admin: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, alerts: true, recent: true, filters: true, export: true },
+        ceo: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, alerts: true, recent: true, filters: true, export: true },
+        manager: { kpis: true, trend: true, heatmap: true, divisions: true, products: false, comparison: true, alerts: true, recent: true, filters: true, export: true },
+        qclp: { kpis: true, trend: false, heatmap: false, divisions: false, products: true, comparison: false, alerts: true, recent: true, filters: true, export: false },
+        verifier: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, alerts: true, recent: true, filters: false, export: false },
+        operator: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, alerts: false, recent: true, filters: false, export: false },
+    };
+    return configs[role] || configs.admin;
+}
 
 export function renderDashboardPage() {
     const page = document.createElement('div');
@@ -25,6 +43,9 @@ export function renderDashboardPage() {
     page.innerHTML = `
         <div class="dashboard-header">
             <h1 class="page-title">Analytics</h1>
+            <button class="btn-icon dashboard-export-btn" id="reportBuilderBtn" title="Build Custom Report">
+                📝 <span class="export-label">Report</span>
+            </button>
             <button class="btn-icon dashboard-export-btn" id="exportPdfBtn" title="Export PDF Report">
                 📄 <span class="export-label">Export PDF</span>
             </button>
@@ -105,6 +126,21 @@ export function renderDashboardPage() {
             </div>
         </div>
 
+        <!-- Trend Comparison -->
+        <div class="widget widget-comparison" id="widgetComparison">
+            <div class="widget-header">
+                <h3 class="widget-title">📊 Trend Comparison</h3>
+                <div class="comparison-toggle" id="comparisonToggle">
+                    <button class="comp-tab active" data-mode="mom">Month vs Month</button>
+                    <button class="comp-tab" data-mode="yoy">Year vs Year</button>
+                </div>
+            </div>
+            <div class="widget-body">
+                <div class="comparison-kpis" id="comparisonKpis"></div>
+                <div class="chart-container" id="chartComparison"></div>
+            </div>
+        </div>
+
         <!-- Critical Alerts -->
         <div class="widget widget-alerts" id="widgetAlerts">
             <div class="widget-header">
@@ -139,9 +175,51 @@ export function renderDashboardPage() {
         setupFilters(page);
         setupExport(page);
         refreshDashboard(page);
+        applyRoleDashboard(page);
     }, 50);
 
     return page;
+}
+
+function applyRoleDashboard(page) {
+    const user = getCurrentUser();
+    const role = user?.role || 'admin';
+    const cfg = getRoleDashboardConfig(role);
+
+    // Map widget IDs to config keys
+    const widgetMap = {
+        widgetTrend: 'trend',
+        widgetHeatmap: 'heatmap',
+        widgetDivisions: 'divisions',
+        widgetProducts: 'products',
+        widgetComparison: 'comparison',
+        widgetAlerts: 'alerts',
+        widgetRecent: 'recent',
+    };
+
+    Object.entries(widgetMap).forEach(([id, key]) => {
+        const el = page.querySelector(`#${id}`);
+        if (el && !cfg[key]) el.style.display = 'none';
+    });
+
+    // Hide filter bar if role doesn't use filters
+    if (!cfg.filters) {
+        const filterBar = page.querySelector('.filter-bar');
+        if (filterBar) filterBar.style.display = 'none';
+    }
+
+    // Hide export buttons
+    if (!cfg.export) {
+        page.querySelector('#exportPdfBtn')?.parentElement && (page.querySelector('#exportPdfBtn').style.display = 'none');
+        page.querySelector('#reportBuilderBtn')?.parentElement && (page.querySelector('#reportBuilderBtn').style.display = 'none');
+    }
+
+    // Add role label to header
+    const header = page.querySelector('.dashboard-header .page-title');
+    if (header && role !== 'admin' && role !== 'ceo') {
+        const roleLabels = { manager: 'Manager View', qclp: 'Quality Control', verifier: 'Verifier View', operator: 'My Operations' };
+        header.innerHTML = `Analytics <span class="dash-role-label">${roleLabels[role] || ''}</span>`;
+    }
 }
 
 function setupFilters(page) {
@@ -169,6 +247,9 @@ function setupExport(page) {
     page.querySelector('#exportPdfBtn')?.addEventListener('click', () => {
         exportDashboardPDF(page);
     });
+    page.querySelector('#reportBuilderBtn')?.addEventListener('click', () => {
+        openReportBuilder();
+    });
 }
 
 async function refreshDashboard(page) {
@@ -182,6 +263,7 @@ async function refreshDashboard(page) {
     renderProductChart(page, shipments);
     renderAlerts(page, shipments);
     renderRecentOps(page, shipments);
+    renderTrendComparison(page, allShipments);
 }
 
 function renderKPIs(page, shipments, allShipments) {
@@ -433,6 +515,99 @@ function renderRecentOps(page, shipments) {
             if (shipment) showOperationDetail(shipment);
         });
     });
+}
+
+// ── Trend Comparison Widget ──────────────────────────────────
+
+let _comparisonMode = 'mom';
+let _comparisonAllShipments = [];
+
+function renderTrendComparison(page, allShipments) {
+    _comparisonAllShipments = allShipments;
+    const kpisContainer = page.querySelector('#comparisonKpis');
+    const chartContainer = page.querySelector('#chartComparison');
+    const toggle = page.querySelector('#comparisonToggle');
+    if (!kpisContainer || !chartContainer) return;
+
+    // Setup toggle handlers (once)
+    if (toggle && !toggle.dataset.init) {
+        toggle.dataset.init = '1';
+        toggle.querySelectorAll('.comp-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                _comparisonMode = btn.dataset.mode;
+                toggle.querySelectorAll('.comp-tab').forEach(b => b.classList.toggle('active', b === btn));
+                renderComparisonContent(page);
+            });
+        });
+    }
+
+    renderComparisonContent(page);
+}
+
+function renderComparisonContent(page) {
+    const kpisContainer = page.querySelector('#comparisonKpis');
+    const chartContainer = page.querySelector('#chartComparison');
+    if (!kpisContainer || !chartContainer) return;
+
+    const data = getTrendComparison(_comparisonAllShipments, _comparisonMode);
+    const { current, previous, deltas, divisionBreakdown, labels } = data;
+
+    // Delta display helper
+    function deltaHTML(d, inverse = false) {
+        // For loss metrics, decrease is good (green), increase is bad (red)
+        // For compliance, increase is good (green), decrease is bad (red)
+        const isPositive = inverse ? d.abs < 0 : d.abs > 0;
+        const isNegative = inverse ? d.abs > 0 : d.abs < 0;
+        const arrow = d.abs > 0 ? '↑' : d.abs < 0 ? '↓' : '→';
+        const color = isPositive ? 'var(--green, #34d399)' : isNegative ? 'var(--red, #f87171)' : 'var(--text-muted)';
+        const pctStr = d.pct !== 0 ? ` (${d.pct > 0 ? '+' : ''}${d.pct}%)` : '';
+        return `<span class="comp-delta" style="color:${color}">${arrow} ${Math.abs(d.abs).toLocaleString()}${pctStr}</span>`;
+    }
+
+    const cards = [
+        { label: 'Total Ops', cur: current.total, prev: previous.total, delta: deltas.total, icon: '📊', inverse: false },
+        { label: 'Compliance', cur: `${current.complianceRate}%`, prev: `${previous.complianceRate}%`, delta: deltas.complianceRate, icon: '✅', inverse: false },
+        { label: 'Avg Loss', cur: `${current.avgLoss.toFixed(3)}%`, prev: `${previous.avgLoss.toFixed(3)}%`, delta: deltas.avgLoss, icon: '📉', inverse: true },
+        { label: 'Critical', cur: current.critical, prev: previous.critical, delta: deltas.critical, icon: '🔴', inverse: true },
+        { label: 'Total Loss', cur: `${current.totalLossKg.toLocaleString()} kg`, prev: `${previous.totalLossKg.toLocaleString()} kg`, delta: deltas.totalLossKg, icon: '⚖️', inverse: true },
+        { label: 'Impact', cur: `$${current.financialImpact.toLocaleString()}`, prev: `$${previous.financialImpact.toLocaleString()}`, delta: deltas.financialImpact, icon: '💰', inverse: true },
+    ];
+
+    kpisContainer.innerHTML = `
+        <div class="comp-period-labels">
+            <span class="comp-period prev">${labels.previous}</span>
+            <span class="comp-vs">vs</span>
+            <span class="comp-period cur">${labels.current}</span>
+        </div>
+        <div class="comp-cards">
+            ${cards.map(c => `
+                <div class="comp-card">
+                    <div class="comp-card-icon">${c.icon}</div>
+                    <div class="comp-card-label">${c.label}</div>
+                    <div class="comp-card-values">
+                        <span class="comp-prev-val">${c.prev}</span>
+                        <span class="comp-arrow">→</span>
+                        <span class="comp-cur-val">${c.cur}</span>
+                    </div>
+                    <div class="comp-card-delta">${deltaHTML(c.delta, c.inverse)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    // Grouped bar chart for division comparison
+    if (divisionBreakdown.length > 0) {
+        requestAnimationFrame(() => {
+            renderGroupedBarChart(chartContainer, divisionBreakdown, {
+                suffix: '%',
+                currentLabel: labels.current,
+                previousLabel: labels.previous,
+                height: 220,
+            });
+        });
+    } else {
+        chartContainer.innerHTML = '<div class="chart-empty">Not enough data for comparison</div>';
+    }
 }
 
 // ── Drill-Down Modal ──────────────────────────────────────────

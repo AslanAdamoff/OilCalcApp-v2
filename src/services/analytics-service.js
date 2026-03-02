@@ -267,3 +267,105 @@ export function getRiskHeatmap(shipments) {
         avgLoss: d.avgLoss,
     }));
 }
+
+/**
+ * Trend Comparison — compare two periods (MoM or YoY)
+ * @param {Array} shipments - all shipments
+ * @param {'mom'|'yoy'} mode - month-over-month or year-over-year
+ * @returns {{ current: Object, previous: Object, deltas: Object, labels: { current: string, previous: string } }}
+ */
+export function getTrendComparison(shipments, mode = 'mom') {
+    const now = new Date();
+    let curStart, curEnd, prevStart, prevEnd, curLabel, prevLabel;
+
+    if (mode === 'mom') {
+        // Current month
+        curStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        // Previous month
+        prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        curLabel = curStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        prevLabel = prevStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else {
+        // Current year (up to now)
+        curStart = new Date(now.getFullYear(), 0, 1);
+        curEnd = now;
+        // Previous year (same period)
+        prevStart = new Date(now.getFullYear() - 1, 0, 1);
+        prevEnd = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate(), 23, 59, 59);
+        curLabel = `${now.getFullYear()} YTD`;
+        prevLabel = `${now.getFullYear() - 1} YTD`;
+    }
+
+    function periodKPIs(list) {
+        const total = list.length;
+        const withinNorm = list.filter(s => s.lossStatus === 'within_norm').length;
+        const warning = list.filter(s => s.lossStatus === 'warning').length;
+        const critical = list.filter(s => s.lossStatus === 'critical').length;
+        const evaluated = total - list.filter(s => s.lossStatus === 'not_evaluated').length;
+        const complianceRate = evaluated > 0 ? (withinNorm / evaluated * 100) : 100;
+
+        const losses = list.filter(s => s.result?.evaluation?.lossPercent !== undefined);
+        const avgLoss = losses.length > 0
+            ? losses.reduce((sum, s) => sum + Math.abs(s.result.evaluation.lossPercent), 0) / losses.length
+            : 0;
+        const totalLossKg = list
+            .filter(s => s.result?.deltaMassKg !== undefined)
+            .reduce((sum, s) => sum + Math.abs(s.result.deltaMassKg), 0);
+
+        return {
+            total, withinNorm, warning, critical, complianceRate: parseFloat(complianceRate.toFixed(1)),
+            avgLoss: parseFloat(avgLoss.toFixed(3)), totalLossKg: Math.round(totalLossKg),
+            financialImpact: Math.round(totalLossKg * 0.80),
+        };
+    }
+
+    const curShipments = shipments.filter(s => {
+        const d = new Date(s.date);
+        return d >= curStart && d <= curEnd;
+    });
+    const prevShipments = shipments.filter(s => {
+        const d = new Date(s.date);
+        return d >= prevStart && d <= prevEnd;
+    });
+
+    const current = periodKPIs(curShipments);
+    const previous = periodKPIs(prevShipments);
+
+    // Compute deltas
+    function delta(cur, prev) {
+        const abs = cur - prev;
+        const pct = prev !== 0 ? ((cur - prev) / prev * 100) : (cur > 0 ? 100 : 0);
+        return { abs: parseFloat(abs.toFixed(2)), pct: parseFloat(pct.toFixed(1)) };
+    }
+
+    const deltas = {
+        total: delta(current.total, previous.total),
+        complianceRate: delta(current.complianceRate, previous.complianceRate),
+        avgLoss: delta(current.avgLoss, previous.avgLoss),
+        totalLossKg: delta(current.totalLossKg, previous.totalLossKg),
+        critical: delta(current.critical, previous.critical),
+        financialImpact: delta(current.financialImpact, previous.financialImpact),
+    };
+
+    // Per-division breakdown for grouped bar chart
+    const divisionBreakdown = divisions.map(div => {
+        const curDiv = curShipments.filter(s => s.division === div.code);
+        const prevDiv = prevShipments.filter(s => s.division === div.code);
+        const curLosses = curDiv.filter(s => s.result?.evaluation?.lossPercent !== undefined);
+        const prevLosses = prevDiv.filter(s => s.result?.evaluation?.lossPercent !== undefined);
+        const curAvg = curLosses.length > 0
+            ? curLosses.reduce((sum, s) => sum + Math.abs(s.result.evaluation.lossPercent), 0) / curLosses.length : 0;
+        const prevAvg = prevLosses.length > 0
+            ? prevLosses.reduce((sum, s) => sum + Math.abs(s.result.evaluation.lossPercent), 0) / prevLosses.length : 0;
+        return {
+            label: div.code,
+            current: parseFloat(curAvg.toFixed(3)),
+            previous: parseFloat(prevAvg.toFixed(3)),
+        };
+    }).filter(d => d.current > 0 || d.previous > 0);
+
+    return { current, previous, deltas, divisionBreakdown, labels: { current: curLabel, previous: prevLabel } };
+}
+

@@ -19,6 +19,7 @@ import { renderConfigPage } from './pages/config-page.js';
 import { renderAdminPage } from './pages/admin-page.js';
 import { renderLoginPage } from './pages/login-page.js';
 import { isAuthenticated, getCurrentUser, getAllowedTabs, logout } from './services/auth-service.js';
+import { checkForNewAlerts, getNotifications, getUnreadCount, markAsRead, markAllAsRead } from './services/notification-service.js';
 
 // Professional SVG icons (24x24, stroke-based, currentColor)
 const icons = {
@@ -135,9 +136,24 @@ function showApp() {
                 <span class="user-name">${user?.name || user?.email || 'User'}</span>
                 <span class="user-role-badge">${user?.role || ''}</span>
             </div>
-            <button class="btn-icon logout-btn" id="logoutBtn" title="Sign Out">
-                ${icons.logout}
-            </button>
+            <div class="app-header-actions">
+                <div class="notif-wrapper" id="notifWrapper">
+                    <button class="btn-icon notif-bell" id="notifBellBtn" title="Notifications">
+                        🔔
+                        <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown" style="display:none">
+                        <div class="notif-dropdown-header">
+                            <span class="notif-dropdown-title">Notifications</span>
+                            <button class="notif-mark-all" id="notifMarkAll">Mark all read</button>
+                        </div>
+                        <div class="notif-dropdown-list" id="notifList"></div>
+                    </div>
+                </div>
+                <button class="btn-icon logout-btn" id="logoutBtn" title="Sign Out">
+                    ${icons.logout}
+                </button>
+            </div>
         </div>
         <div class="page-container" id="pageContainer"></div>
         <nav class="tab-bar" id="tabBar"></nav>
@@ -152,6 +168,9 @@ function showApp() {
 
     renderTabBar();
     switchTab(currentTab);
+
+    // Notification bell setup
+    setupNotifications();
 }
 
 function renderTabBar() {
@@ -185,3 +204,95 @@ function switchTab(tabId) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── Notification System ──────────────────────────────────────
+
+async function setupNotifications() {
+    const bellBtn = document.getElementById('notifBellBtn');
+    const dropdown = document.getElementById('notifDropdown');
+    const markAllBtn = document.getElementById('notifMarkAll');
+
+    if (!bellBtn || !dropdown) return;
+
+    // Check for new alerts
+    await checkForNewAlerts();
+    updateNotifBadge();
+
+    // Toggle dropdown
+    bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.style.display !== 'none';
+        dropdown.style.display = isOpen ? 'none' : 'block';
+        if (!isOpen) renderNotifDropdown();
+    });
+
+    // Mark all read
+    markAllBtn?.addEventListener('click', () => {
+        markAllAsRead();
+        updateNotifBadge();
+        renderNotifDropdown();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#notifWrapper')) {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // Periodic check (every 60s)
+    setInterval(async () => {
+        const newCount = await checkForNewAlerts();
+        if (newCount > 0) updateNotifBadge();
+    }, 60000);
+}
+
+function updateNotifBadge() {
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    const count = getUnreadCount();
+    badge.textContent = count > 9 ? '9+' : count;
+    badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function renderNotifDropdown() {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    const notifs = getNotifications();
+
+    if (notifs.length === 0) {
+        list.innerHTML = '<div class="notif-empty">No notifications</div>';
+        return;
+    }
+
+    list.innerHTML = notifs.slice(0, 20).map(n => `
+        <div class="notif-item ${n.read ? 'read' : 'unread'}" data-notif-id="${n.id}">
+            <div class="notif-item-icon">${n.type === 'critical_loss' ? '🔴' : '⚠️'}</div>
+            <div class="notif-item-body">
+                <div class="notif-item-title">${n.title}</div>
+                <div class="notif-item-msg">${n.message}</div>
+                <div class="notif-item-time">${timeAgo(n.createdAt)}</div>
+            </div>
+        </div>
+    `).join('');
+
+    // Click to mark as read
+    list.querySelectorAll('.notif-item.unread').forEach(item => {
+        item.addEventListener('click', () => {
+            markAsRead(item.dataset.notifId);
+            item.classList.replace('unread', 'read');
+            updateNotifBadge();
+        });
+    });
+}
+
+function timeAgo(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+}
