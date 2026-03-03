@@ -3,8 +3,7 @@
  * Shared collection: all users see the same data
  */
 
-import { db } from './firebase-config.js';
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, limit } from './firebase-config.js';
 import { getCurrentUser } from './auth-service.js';
 
 const COLLECTION = 'shipments';

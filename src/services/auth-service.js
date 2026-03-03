@@ -4,11 +4,11 @@
  * Session persisted in localStorage
  */
 
-import { db } from './firebase-config.js';
-import { collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where } from './firebase-config.js';
 
 const USERS_COLLECTION = 'users';
 const SESSION_KEY = 'oilcalc_session';
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
 
 /** Role definitions with allowed tabs */
 export const ROLES = {
@@ -98,11 +98,21 @@ export function logout() {
     localStorage.removeItem(SESSION_KEY);
 }
 
-/** Get current user from session */
+/** Get current user from session (auto-expires after 8h) */
 export function getCurrentUser() {
     try {
         const data = localStorage.getItem(SESSION_KEY);
-        return data ? JSON.parse(data) : null;
+        if (!data) return null;
+        const session = JSON.parse(data);
+        // Check session expiry
+        if (session.loginAt) {
+            const elapsed = Date.now() - new Date(session.loginAt).getTime();
+            if (elapsed > SESSION_TTL_MS) {
+                logout();
+                return null;
+            }
+        }
+        return session;
     } catch {
         return null;
     }
