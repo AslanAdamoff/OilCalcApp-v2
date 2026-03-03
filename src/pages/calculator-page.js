@@ -69,7 +69,7 @@ export function renderCalculatorPage() {
           <span class="field-icon">${fieldIcons.temperature}</span>
           Temperature (°C)
         </div>
-        <input type="text" inputmode="decimal" class="field-input" id="calcTemp" placeholder="20.0" value="${state.temperature}">
+        <input type="text" inputmode="text" class="field-input" id="calcTemp" placeholder="20.0" value="${state.temperature}">
       </div>
 
       <!-- Mass or Volume Input -->
@@ -119,11 +119,17 @@ export function renderCalculatorPage() {
   });
 
   // Input bindings (save to state on input change)
-  const bindInput = (id, key) => {
+  const bindInput = (id, key, allowNegative = false) => {
     const el = page.querySelector(`#${id}`);
     if (el) {
       el.addEventListener('input', (e) => {
         let v = e.target.value.replace(',', '.');
+        // Sanitize: allow digits, dot, and optionally minus at start
+        if (allowNegative) {
+          v = v.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '');
+        } else {
+          v = v.replace(/[^0-9.]/g, '');
+        }
         e.target.value = v;
         state[key] = v;
       });
@@ -131,7 +137,7 @@ export function renderCalculatorPage() {
   };
 
   bindInput('calcDensity', 'density');
-  bindInput('calcTemp', 'temperature');
+  bindInput('calcTemp', 'temperature', true);
 
   // Main input binding depends on mode
   const mainInput = page.querySelector('#calcMainInput');
