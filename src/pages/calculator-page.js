@@ -459,17 +459,34 @@ function showVolConvResult(result) {
   rows += resultRow(`Volume at T₂ (${formatTemperature(result.tTarget)}°C)`, formatVolume(result.vTarget) + ' l', 'accent');
   rows += '<hr class="result-divider">';
 
-  // Difference
+  // Difference T₁ vs 15°C
+  const diffT1_15 = result.v15 - result.vInput;
+  const diffT1_15Pct = result.vInput !== 0 ? (diffT1_15 / result.vInput) * 100 : 0;
+  const diffT1_15Class = diffT1_15 >= 0 ? 'positive' : 'negative';
+
+  rows += `
+    <div class="result-row">
+      <span class="label">Δ (15°C − T₁)</span>
+      <span class="value ${diffT1_15Class}">${formatVolume(diffT1_15)} l</span>
+    </div>
+    <div class="result-row">
+      <span class="label">Δ (15°C − T₁) %</span>
+      <span class="value ${diffT1_15Class}">${formatPercent(diffT1_15Pct)}%</span>
+    </div>
+  `;
+  rows += '<hr class="result-divider">';
+
+  // Difference T₂ vs T₁
   const diff = result.difference;
   const diffClass = diff >= 0 ? 'positive' : 'negative';
 
   rows += `
     <div class="result-row">
-      <span class="label">Δ Volume (T₂ − T₁)</span>
+      <span class="label">Δ (T₂ − T₁)</span>
       <span class="value ${diffClass}">${formatVolume(diff)} l</span>
     </div>
     <div class="result-row">
-      <span class="label">Δ Volume %</span>
+      <span class="label">Δ (T₂ − T₁) %</span>
       <span class="value ${diffClass}">${formatPercent(result.percentDifference)}%</span>
     </div>
   `;
