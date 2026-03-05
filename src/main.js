@@ -3,13 +3,33 @@
  * SPA with auth gate and role-based tab navigation
  */
 
-import './styles/index.css';
+import './styles/base.css';
+import './styles/dashboard.css';
+import './styles/pages.css';
 
-// Apply saved theme immediately
-const savedTheme = localStorage.getItem('oilcalc-theme');
-if (savedTheme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
+// Apply saved theme immediately (supports 'dark', 'light', 'auto')
+const savedTheme = localStorage.getItem('oilcalc-theme') || 'auto';
+function applyTheme(theme) {
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+    } else if (theme === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (!prefersDark) {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
 }
+applyTheme(savedTheme);
+
+// Listen for system theme changes when in auto mode
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const current = localStorage.getItem('oilcalc-theme') || 'auto';
+    if (current === 'auto') applyTheme('auto');
+});
 
 import { renderShipmentPage } from './pages/shipment-page.js';
 import { renderCalculatorPage } from './pages/calculator-page.js';
@@ -112,6 +132,9 @@ function init() {
             setTimeout(() => splash.remove(), 700);
         }
     }, remaining);
+
+    // PWA Install Prompt
+    setupPWAInstallPrompt();
 }
 
 function showLogin() {
@@ -169,6 +192,9 @@ function showApp() {
     renderTabBar();
     switchTab(currentTab);
 
+    // Swipe navigation
+    setupSwipeNavigation();
+
     // Notification bell setup
     setupNotifications();
 }
@@ -204,6 +230,101 @@ function switchTab(tabId) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+// ── PWA Install Prompt ──────────────────────────────────────
+
+let deferredPrompt = null;
+
+function setupPWAInstallPrompt() {
+    // Don't show if already dismissed or if in standalone mode
+    if (localStorage.getItem('oilcalc-pwa-dismissed') === 'true') return;
+    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    if (window.navigator.standalone === true) return;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showPWABanner();
+    });
+}
+
+function showPWABanner() {
+    // Remove existing
+    document.querySelector('.pwa-banner')?.remove();
+
+    const banner = document.createElement('div');
+    banner.className = 'pwa-banner';
+    banner.innerHTML = `
+        <div class="pwa-banner-text">
+            <strong>📲 Install OilCalcApp</strong>
+            <span>Add to Home Screen for quick access</span>
+        </div>
+        <div class="pwa-banner-actions">
+            <button class="pwa-install-btn" id="pwaInstallBtn">Install</button>
+            <button class="pwa-dismiss-btn" id="pwaDismissBtn">✕</button>
+        </div>
+    `;
+
+    document.body.appendChild(banner);
+    // Animate in
+    requestAnimationFrame(() => banner.classList.add('visible'));
+
+    document.getElementById('pwaInstallBtn').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+        }
+        banner.remove();
+    });
+
+    document.getElementById('pwaDismissBtn').addEventListener('click', () => {
+        localStorage.setItem('oilcalc-pwa-dismissed', 'true');
+        banner.classList.remove('visible');
+        setTimeout(() => banner.remove(), 300);
+    });
+}
+
+// ── Swipe Navigation ────────────────────────────────────────
+
+function setupSwipeNavigation() {
+    const container = document.getElementById('pageContainer');
+    if (!container) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    container.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].clientX;
+        touchStartY = e.changedTouches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    container.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        const dt = Date.now() - touchStartTime;
+
+        // Must be fast enough, horizontal enough, and long enough
+        if (dt > 500) return;
+        if (Math.abs(dx) < 60) return;
+        if (Math.abs(dy) > Math.abs(dx) * 0.5) return;
+
+        const currentIndex = visibleTabs.findIndex(t => t.id === currentTab);
+        if (currentIndex < 0) return;
+
+        if (dx < 0 && currentIndex < visibleTabs.length - 1) {
+            // Swipe left → next tab
+            switchTab(visibleTabs[currentIndex + 1].id);
+            renderTabBar();
+        } else if (dx > 0 && currentIndex > 0) {
+            // Swipe right → previous tab
+            switchTab(visibleTabs[currentIndex - 1].id);
+            renderTabBar();
+        }
+    }, { passive: true });
+}
 
 // ── Notification System ──────────────────────────────────────
 

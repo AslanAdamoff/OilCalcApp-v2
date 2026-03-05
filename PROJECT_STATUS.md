@@ -1,6 +1,6 @@
 # OilCalcApp v2.0 — Project Status
 
-> **Last updated:** 2026-03-01 (Phase 5A)
+> **Last updated:** 2026-03-03 (Phase 6 partial)
 > **Live:** <https://oilcalcapp-web.web.app>
 > **Repo:** <https://github.com/AslanAdamoff/OilCalcApp-v2>
 
@@ -11,7 +11,7 @@
 | Frontend | Vanilla JS + Vite 6 | No frameworks, SPA with tab navigation |
 | Styling | Vanilla CSS | Century Gothic font, dark/light themes, glassmorphism |
 | Charts | Custom SVG (`chart-engine.js`) | Line, bar, donut, stacked bar, sparkline — 0 deps |
-| Auth | Firestore + SHA-256 | Custom auth, role-based access, session in localStorage |
+| Auth | Firestore + SHA-256 | Custom auth, role-based access, session with 8h TTL |
 | Storage | Firebase Firestore | Shared collection, all users see same data |
 | Deploy | Firebase Hosting + Firestore | `npx firebase deploy` |
 | PDF | html2canvas + jsPDF | Dynamic import for code splitting |
@@ -37,7 +37,7 @@ src/
 │   ├── formatters.js           # Number/date formatting utilities
 │   └── astm-tables.js          # ASTM D1250 volume correction tables
 ├── services/
-│   ├── firebase-config.js      # Firebase app + Firestore init
+│   ├── firebase-config.js      # Firebase app + Firestore init (env vars with fallback)
 │   ├── auth-service.js         # Firestore auth, roles, user CRUD, SHA-256 hashing
 │   ├── shipment-service.js     # Firestore CRUD for shipments (shared collection)
 │   ├── analytics-service.js    # KPIs, trends, division comparison, risk heatmap, alerts
@@ -114,8 +114,11 @@ src/
 
 - [ ] Firestore security rules (restrict by role)
 - [ ] Password change functionality
-- [ ] Session expiry
+- [x] Session expiry (8h TTL in getCurrentUser)
 - [ ] Rate limiting
+- [x] Firebase config moved to env vars (.env + fallback)
+- [x] html2canvas added as explicit dependency
+- [x] CSS code splitting enabled in Vite config
 
 ### Phase 7 — Future
 
@@ -128,3 +131,4 @@ src/
 - **Firestore test rules** — currently `allow read, write: if true` (open access)
 - **Demo data** — must be loaded manually from Settings by admin
 - **No password change** — passwords set at user creation
+- **Custom auth vs Firebase Auth** — can't use `request.auth` in Firestore rules without migration

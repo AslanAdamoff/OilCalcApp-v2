@@ -7,7 +7,7 @@ export default defineConfig({
         outDir: 'dist',
         target: 'es2020',
         sourcemap: false,
-        cssCodeSplit: false,
+        cssCodeSplit: true,
     },
     optimizeDeps: {
         include: [

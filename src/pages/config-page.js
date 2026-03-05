@@ -22,10 +22,12 @@ export function renderConfigPage() {
         <!-- Theme Toggle -->
         <div class="card">
             <div class="card-title">Theme</div>
-            <div class="segmented" style="margin-top: var(--spacing-sm);">
-                <input type="radio" name="theme" id="themeDark" value="dark" ${document.documentElement.getAttribute('data-theme') !== 'light' ? 'checked' : ''}>
+            <div class="segmented segmented-3" style="margin-top: var(--spacing-sm);">
+                <input type="radio" name="theme" id="themeDark" value="dark" ${(localStorage.getItem('oilcalc-theme') || 'auto') === 'dark' ? 'checked' : ''}>
                 <label for="themeDark">🌙 Dark</label>
-                <input type="radio" name="theme" id="themeLight" value="light" ${document.documentElement.getAttribute('data-theme') === 'light' ? 'checked' : ''}>
+                <input type="radio" name="theme" id="themeAuto" value="auto" ${(localStorage.getItem('oilcalc-theme') || 'auto') === 'auto' ? 'checked' : ''}>
+                <label for="themeAuto">🔄 Auto</label>
+                <input type="radio" name="theme" id="themeLight" value="light" ${(localStorage.getItem('oilcalc-theme') || 'auto') === 'light' ? 'checked' : ''}>
                 <label for="themeLight">☀️ Light</label>
             </div>
         </div>
@@ -111,12 +113,18 @@ export function renderConfigPage() {
         // Theme toggle
         page.querySelectorAll('input[name="theme"]').forEach(radio => {
             radio.addEventListener('change', () => {
+                localStorage.setItem('oilcalc-theme', radio.value);
                 if (radio.value === 'light') {
                     document.documentElement.setAttribute('data-theme', 'light');
-                    localStorage.setItem('oilcalc-theme', 'light');
+                } else if (radio.value === 'auto') {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if (!prefersDark) {
+                        document.documentElement.setAttribute('data-theme', 'light');
+                    } else {
+                        document.documentElement.removeAttribute('data-theme');
+                    }
                 } else {
                     document.documentElement.removeAttribute('data-theme');
-                    localStorage.setItem('oilcalc-theme', 'dark');
                 }
             });
         });

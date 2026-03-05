@@ -120,3 +120,17 @@ export function litersToLitersDual(volume, tempFrom, tempTo, densityVal, density
         rhoTTarget: rhoT2,
     });
 }
+
+/**
+ * Reverse Density — find density from mass + volume + temperature
+ * @param {number} mass - Mass in kg
+ * @param {number} volume - Volume in liters
+ * @param {number} temperature - Temperature in °C
+ * @param {string} product - ASTM category ('refined' or 'crude')
+ * @returns {object} { rhoT, rho15 }
+ */
+export function reverseDensity(mass, volume, temperature, product) {
+    const rhoT = mass / volume;
+    const rho15 = density15(rhoT, temperature, product);
+    return { rhoT, rho15 };
+}
