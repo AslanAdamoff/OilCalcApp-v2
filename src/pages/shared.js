@@ -6,48 +6,71 @@
  * Show error toast
  */
 export function showError(message) {
-    // Remove existing
-    document.querySelectorAll('.error-toast').forEach(t => t.remove());
+  // Remove existing
+  document.querySelectorAll('.error-toast').forEach(t => t.remove());
 
-    const toast = document.createElement('div');
-    toast.className = 'error-toast';
-    toast.textContent = message;
-    document.body.appendChild(toast);
+  const toast = document.createElement('div');
+  toast.className = 'error-toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
 
-    setTimeout(() => toast.remove(), 3000);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 /**
  * Show result modal
  */
 export function showResultModal(title, contentHTML) {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.innerHTML = `
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
     <div class="modal-content">
       <div class="modal-hint">Tap to close</div>
       <h2 class="modal-title">${title}</h2>
       ${contentHTML}
+      <button class="btn-secondary modal-copy-btn" id="modalCopyBtn">📋 Copy Result</button>
     </div>
   `;
 
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || e.target.closest('.modal-hint')) {
-            overlay.remove();
-        }
-    });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target.closest('.modal-hint')) {
+      overlay.remove();
+    }
+  });
 
-    document.body.appendChild(overlay);
+  // Copy button
+  const copyBtn = overlay.querySelector('#modalCopyBtn');
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Extract text from result rows
+    const rows = overlay.querySelectorAll('.result-row');
+    let text = `${title}\n${'─'.repeat(30)}\n`;
+    rows.forEach(row => {
+      const label = row.querySelector('.label')?.textContent || '';
+      const value = row.querySelector('.value')?.textContent || '';
+      text += `${label}: ${value}\n`;
+    });
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = '✓ Copied!';
+      setTimeout(() => { copyBtn.textContent = '📋 Copy Result'; }, 1500);
+    }).catch(() => {
+      // Fallback
+      copyBtn.textContent = '⚠ Failed';
+      setTimeout(() => { copyBtn.textContent = '📋 Copy Result'; }, 1500);
+    });
+  });
+
+  document.body.appendChild(overlay);
 }
 
 /**
  * Show confirm dialog
  */
 export function showConfirm({ title, message, confirmText = 'OK', cancelText = 'Cancel', danger = false }) {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.className = 'alert-overlay';
-        overlay.innerHTML = `
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'alert-overlay';
+    overlay.innerHTML = `
       <div class="alert-box">
         <div class="alert-title">${title}</div>
         <div class="alert-message">${message}</div>
@@ -58,28 +81,28 @@ export function showConfirm({ title, message, confirmText = 'OK', cancelText = '
       </div>
     `;
 
-        overlay.querySelector('.cancel').addEventListener('click', () => {
-            overlay.remove();
-            resolve(false);
-        });
-
-        overlay.querySelector(`.${danger ? 'danger-confirm' : 'confirm'}`).addEventListener('click', () => {
-            overlay.remove();
-            resolve(true);
-        });
-
-        document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(false);
     });
+
+    overlay.querySelector(`.${danger ? 'danger-confirm' : 'confirm'}`).addEventListener('click', () => {
+      overlay.remove();
+      resolve(true);
+    });
+
+    document.body.appendChild(overlay);
+  });
 }
 
 /**
  * Show prompt dialog
  */
 export function showPrompt({ title, message, placeholder = '', confirmText = 'Save', cancelText = 'Cancel' }) {
-    return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.className = 'alert-overlay';
-        overlay.innerHTML = `
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'alert-overlay';
+    overlay.innerHTML = `
       <div class="alert-box">
         <div class="alert-title">${title}</div>
         <div class="alert-message">${message}</div>
@@ -91,28 +114,28 @@ export function showPrompt({ title, message, placeholder = '', confirmText = 'Sa
       </div>
     `;
 
-        const input = overlay.querySelector('.alert-input');
-        input.focus();
+    const input = overlay.querySelector('.alert-input');
+    input.focus();
 
-        overlay.querySelector('.cancel').addEventListener('click', () => {
-            overlay.remove();
-            resolve(null);
-        });
-
-        overlay.querySelector('.confirm').addEventListener('click', () => {
-            const value = input.value.trim();
-            overlay.remove();
-            resolve(value || null);
-        });
-
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const value = input.value.trim();
-                overlay.remove();
-                resolve(value || null);
-            }
-        });
-
-        document.body.appendChild(overlay);
+    overlay.querySelector('.cancel').addEventListener('click', () => {
+      overlay.remove();
+      resolve(null);
     });
+
+    overlay.querySelector('.confirm').addEventListener('click', () => {
+      const value = input.value.trim();
+      overlay.remove();
+      resolve(value || null);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const value = input.value.trim();
+        overlay.remove();
+        resolve(value || null);
+      }
+    });
+
+    document.body.appendChild(overlay);
+  });
 }

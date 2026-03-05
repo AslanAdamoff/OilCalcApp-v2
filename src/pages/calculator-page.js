@@ -4,6 +4,7 @@
  */
 
 import { massToLitersDual, litersToMassDual, litersToLitersDual } from '../domain/calculator.js';
+import { massVacToAir, massAirToVac } from '../domain/density-corrector.js';
 import { validateDensity, validateTemperature, validateMass, ValidationError } from '../domain/validators.js';
 import { formatMass, formatVolume, formatDensity, formatTemperature, formatPercent } from '../domain/formatters.js';
 import { DensityMode, ProductType, CalculationType, createHistoryEntry } from '../domain/models.js';
@@ -12,21 +13,36 @@ import { HistoryService } from '../services/history-service.js';
 import { showError, showResultModal } from './shared.js';
 import { fieldIcons } from '../shared/icons.js';
 
-let state = {
-  mode: 'direct',       // 'direct' = Mass→Liters, 'reverse' = Liters→Mass, 'volConv' = Liters→Liters
+const CALC_STATE_KEY = 'oilcalc_calculator_state';
+
+const defaultState = {
+  mode: 'direct',
   densityMode: DensityMode.AT_15,
   productType: ProductType.REFINED,
   density: '',
   temperature: '',
   mass: '',
   volume: '',
-  // volConv-specific
   productId: 'gas_oil',
   volConvDensity: '',
   tempFrom: '',
   tempTo: '',
   volConvVolume: '',
 };
+
+let state = loadState();
+
+function saveState() {
+  try { localStorage.setItem(CALC_STATE_KEY, JSON.stringify(state)); } catch (_) { }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(CALC_STATE_KEY);
+    if (saved) return { ...defaultState, ...JSON.parse(saved) };
+  } catch (_) { }
+  return { ...defaultState };
+}
 
 /** Get typical density label for a product */
 function getTypicalDensity(productId) {
@@ -73,6 +89,7 @@ export function renderCalculatorPage() {
   page.querySelectorAll('input[name="calcMode"]').forEach(r => {
     r.addEventListener('change', (e) => {
       state.mode = e.target.value;
+      saveState();
       refreshPage();
     });
   });
@@ -215,12 +232,12 @@ function renderVolConvFields(typicalDensity) {
 function setupStandardListeners(page) {
   // Product type picker
   page.querySelectorAll('input[name="productType"]').forEach(r => {
-    r.addEventListener('change', (e) => { state.productType = e.target.value; });
+    r.addEventListener('change', (e) => { state.productType = e.target.value; saveState(); });
   });
 
   // Density mode picker
   page.querySelectorAll('input[name="densityMode"]').forEach(r => {
-    r.addEventListener('change', (e) => { state.densityMode = e.target.value; });
+    r.addEventListener('change', (e) => { state.densityMode = e.target.value; saveState(); });
   });
 
   // Input bindings
@@ -236,6 +253,7 @@ function setupStandardListeners(page) {
         }
         e.target.value = v;
         state[key] = v;
+        saveState();
       });
     }
   };
@@ -251,6 +269,7 @@ function setupStandardListeners(page) {
       e.target.value = v;
       if (state.mode === 'direct') state.mass = v;
       else state.volume = v;
+      saveState();
     });
   }
 }
@@ -261,6 +280,7 @@ function setupVolConvListeners(page) {
   if (productSelect) {
     productSelect.addEventListener('change', (e) => {
       state.productId = e.target.value;
+      saveState();
       // Update density placeholder
       const densityInput = page.querySelector('#vcDensity');
       if (densityInput) {
@@ -273,7 +293,7 @@ function setupVolConvListeners(page) {
 
   // Density mode
   page.querySelectorAll('input[name="vcDensityMode"]').forEach(r => {
-    r.addEventListener('change', (e) => { state.densityMode = e.target.value; });
+    r.addEventListener('change', (e) => { state.densityMode = e.target.value; saveState(); });
   });
 
   // Input bindings
@@ -289,6 +309,7 @@ function setupVolConvListeners(page) {
         }
         e.target.value = v;
         state[key] = v;
+        saveState();
       });
     }
   };
@@ -437,6 +458,19 @@ function showCalcResult(result, inputValue, temperature) {
       <span class="value ${diffClass}">${formatPercent(result.percentDifference)}%</span>
     </div>
   `;
+
+  // ASTM Table 56 — Buoyancy Correction
+  if (result.density15 !== null && result.density15 > 0) {
+    const massForTable56 = isDirect ? inputValue : result.at15;
+    const massVac = massForTable56;
+    const massAir = massVacToAir(massVac, result.density15);
+    const buoyancyDiff = massAir - massVac;
+
+    rows += '<hr class="result-divider">';
+    rows += resultRow('⚖️ Mass in Vacuum', formatMass(massVac) + ' kg');
+    rows += resultRow('⚖️ Mass in Air', formatMass(massAir) + ' kg');
+    rows += resultRow('Buoyancy Correction', formatMass(buoyancyDiff) + ' kg');
+  }
 
   showResultModal('Calculator', `<div class="result-card">${rows}</div>`);
 }
