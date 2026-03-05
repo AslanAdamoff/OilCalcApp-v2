@@ -369,3 +369,45 @@ export function getTrendComparison(shipments, mode = 'mom') {
     return { current, previous, deltas, divisionBreakdown, labels: { current: curLabel, previous: prevLabel } };
 }
 
+/**
+ * Route loss statistics — aggregate by route
+ */
+export function getRouteLossStats(shipments) {
+    const routeMap = {};
+
+    shipments.forEach(s => {
+        const key = s.routeId || 'custom';
+        if (!routeMap[key]) {
+            const route = getRoute(s.routeId);
+            routeMap[key] = {
+                routeId: key,
+                name: route?.name || 'Custom / Other',
+                transport: route ? route.transport : null,
+                division: route?.division || s.division,
+                total: 0, critical: 0, warning: 0, withinNorm: 0,
+                losses: [],
+                totalLossKg: 0,
+            };
+        }
+        const r = routeMap[key];
+        r.total++;
+        if (s.lossStatus === 'critical') r.critical++;
+        if (s.lossStatus === 'warning') r.warning++;
+        if (s.lossStatus === 'within_norm') r.withinNorm++;
+        if (s.result?.evaluation?.lossPercent !== undefined) {
+            r.losses.push(Math.abs(s.result.evaluation.lossPercent));
+        }
+        if (s.result?.deltaMassKg) r.totalLossKg += Math.abs(s.result.deltaMassKg);
+    });
+
+    return Object.values(routeMap).map(r => ({
+        ...r,
+        avgLoss: r.losses.length > 0
+            ? parseFloat((r.losses.reduce((a, b) => a + b, 0) / r.losses.length).toFixed(3))
+            : 0,
+        maxLoss: r.losses.length > 0 ? parseFloat(Math.max(...r.losses).toFixed(3)) : 0,
+        exceedanceRate: r.total > 0
+            ? parseFloat(((r.critical + r.warning) / r.total * 100).toFixed(1))
+            : 0,
+    })).filter(r => r.total > 0).sort((a, b) => b.avgLoss - a.avgLoss);
+}

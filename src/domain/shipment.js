@@ -82,6 +82,9 @@ export function createShipment({
 
         // Calculated results (populated after calculation)
         result: null,
+
+        // Verification status
+        verification: { status: 'pending', verifiedBy: null, verifiedAt: null, comment: '' },
     };
 }
 

@@ -4,13 +4,13 @@
  */
 
 import { ShipmentService } from '../services/shipment-service.js';
-import { filterShipments, getKPIs, getMonthlyTrend, getDivisionComparison, getProductBreakdown, getCriticalAlerts, getRiskHeatmap, getTrendComparison } from '../services/analytics-service.js';
+import { filterShipments, getKPIs, getMonthlyTrend, getDivisionComparison, getProductBreakdown, getCriticalAlerts, getRiskHeatmap, getTrendComparison, getRouteLossStats } from '../services/analytics-service.js';
 import { renderLineChart, renderBarChart, renderDonutChart, renderStackedBarChart, renderSparkline, renderGroupedBarChart } from '../components/chart-engine.js';
 import { getLossStatusDisplay } from '../domain/loss-evaluator.js';
 import { getProduct } from '../data/products.js';
 import { getDivision, divisions } from '../data/divisions.js';
 import { products } from '../data/products.js';
-import { getRoute, getTransportLabel } from '../data/routes.js';
+import { getRoute, getTransportLabel, getAllRoutes } from '../data/routes.js';
 import { getLocation } from '../data/locations.js';
 import { renderOperationDetails } from './operation-details-page.js';
 import { openReportBuilder } from './report-builder.js';
@@ -25,12 +25,12 @@ let _drillShipments = []; // Shipments in current drill-down view
  */
 function getRoleDashboardConfig(role) {
     const configs = {
-        admin: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, alerts: true, recent: true, filters: true, export: true },
-        ceo: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, alerts: true, recent: true, filters: true, export: true },
-        manager: { kpis: true, trend: true, heatmap: true, divisions: true, products: false, comparison: true, alerts: true, recent: true, filters: true, export: true },
-        qclp: { kpis: true, trend: false, heatmap: false, divisions: false, products: true, comparison: false, alerts: true, recent: true, filters: true, export: false },
-        verifier: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, alerts: true, recent: true, filters: false, export: false },
-        operator: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, alerts: false, recent: true, filters: false, export: false },
+        admin: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, routes: true, verification: true, alerts: true, recent: true, filters: true, export: true },
+        ceo: { kpis: true, trend: true, heatmap: true, divisions: true, products: true, comparison: true, routes: true, verification: false, alerts: true, recent: true, filters: true, export: true },
+        manager: { kpis: true, trend: true, heatmap: true, divisions: true, products: false, comparison: true, routes: true, verification: true, alerts: true, recent: true, filters: true, export: true },
+        qclp: { kpis: true, trend: false, heatmap: false, divisions: false, products: true, comparison: false, routes: false, verification: true, alerts: true, recent: true, filters: true, export: false },
+        verifier: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, routes: false, verification: true, alerts: true, recent: true, filters: false, export: false },
+        operator: { kpis: true, trend: false, heatmap: false, divisions: false, products: false, comparison: false, routes: false, verification: false, alerts: false, recent: true, filters: false, export: false },
     };
     return configs[role] || configs.admin;
 }
@@ -141,6 +141,23 @@ export function renderDashboardPage() {
             </div>
         </div>
 
+        <!-- Route Loss Stats -->
+        <div class="widget widget-routes" id="widgetRoutes">
+            <div class="widget-header">
+                <h3 class="widget-title">🛤️ Route Loss Ranking</h3>
+            </div>
+            <div class="widget-body" id="routeStatsList"></div>
+        </div>
+
+        <!-- Pending Verifications -->
+        <div class="widget widget-verification" id="widgetVerification">
+            <div class="widget-header">
+                <h3 class="widget-title">✅ Pending Verification</h3>
+                <span class="alert-badge" id="verifyBadge">0</span>
+            </div>
+            <div class="widget-body" id="verificationList"></div>
+        </div>
+
         <!-- Critical Alerts -->
         <div class="widget widget-alerts" id="widgetAlerts">
             <div class="widget-header">
@@ -193,6 +210,8 @@ function applyRoleDashboard(page) {
         widgetDivisions: 'divisions',
         widgetProducts: 'products',
         widgetComparison: 'comparison',
+        widgetRoutes: 'routes',
+        widgetVerification: 'verification',
         widgetAlerts: 'alerts',
         widgetRecent: 'recent',
     };
@@ -261,6 +280,8 @@ async function refreshDashboard(page) {
     renderHeatmap(page, shipments);
     renderDivisionChart(page, shipments);
     renderProductChart(page, shipments);
+    renderRouteStats(page, shipments);
+    renderPendingVerifications(page, allShipments);
     renderAlerts(page, shipments);
     renderRecentOps(page, shipments);
     renderTrendComparison(page, allShipments);
@@ -513,6 +534,166 @@ function renderRecentOps(page, shipments) {
             const shipmentId = row.dataset.shipmentId;
             const shipment = recent.find(s => s.id === shipmentId);
             if (shipment) showOperationDetail(shipment);
+        });
+    });
+}
+
+// ── Route Loss Statistics ────────────────────────────────────
+
+function renderRouteStats(page, shipments) {
+    const container = page.querySelector('#routeStatsList');
+    if (!container) return;
+
+    const stats = getRouteLossStats(shipments);
+    if (stats.length === 0) {
+        container.innerHTML = '<div class="chart-empty" style="padding:var(--spacing-lg)"><div style="font-size:2rem;margin-bottom:8px">🛤️</div><div>No route data</div></div>';
+        return;
+    }
+
+    const top = stats.slice(0, 10);
+
+    container.innerHTML = `
+        <div class="ops-table">
+            <div class="ops-table-header">
+                <span>Route</span>
+                <span>Type</span>
+                <span>Ops</span>
+                <span>Avg Loss</span>
+                <span>Max</span>
+                <span>Status</span>
+            </div>
+            ${top.map(r => {
+        const transportInfo = r.transport ? getTransportLabel(r.transport) : { icon: '📦', name: 'Other' };
+        const statusDot = r.critical > 0 ? '🔴' : r.warning > 0 ? '🟡' : '🟢';
+        const lossColor = r.avgLoss > 0.3 ? 'var(--red)' : r.avgLoss > 0.15 ? 'var(--yellow)' : 'var(--green)';
+        const shortName = r.name.length > 30 ? r.name.split('→').map(s => s.trim().split(' ')[0]).join(' → ') : r.name;
+        return `
+                    <div class="ops-table-row clickable" data-drill="route" data-route-id="${r.routeId}" style="cursor:pointer">
+                        <span class="ops-route" title="${r.name}">${shortName}</span>
+                        <span>${transportInfo.icon}</span>
+                        <span>${r.total}</span>
+                        <span style="color:${lossColor};font-weight:600">${r.avgLoss.toFixed(3)}%</span>
+                        <span>${r.maxLoss.toFixed(3)}%</span>
+                        <span>${statusDot}</span>
+                    </div>
+                `;
+    }).join('')}
+        </div>
+    `;
+
+    // Drill-down for routes
+    container.querySelectorAll('[data-drill="route"]').forEach(row => {
+        row.addEventListener('click', () => {
+            const routeId = row.dataset.routeId;
+            const routeShipments = shipments.filter(s => (s.routeId || 'custom') === routeId);
+            _drillShipments = routeShipments;
+            const stat = stats.find(s => s.routeId === routeId);
+            const title = stat?.name || routeId;
+
+            const html = `
+                <div class="drill-kpi-summary">
+                    <div class="drill-kpi"><span class="drill-kpi-val">${stat?.total || 0}</span><span class="drill-kpi-lbl">Shipments</span></div>
+                    <div class="drill-kpi"><span class="drill-kpi-val" style="color:var(--red)">${stat?.avgLoss?.toFixed(3) || 0}%</span><span class="drill-kpi-lbl">Avg Loss</span></div>
+                    <div class="drill-kpi"><span class="drill-kpi-val" style="color:var(--yellow)">${stat?.warning || 0}</span><span class="drill-kpi-lbl">Warning</span></div>
+                    <div class="drill-kpi"><span class="drill-kpi-val" style="color:var(--red)">${stat?.critical || 0}</span><span class="drill-kpi-lbl">Critical</span></div>
+                </div>
+                <div class="drill-table">
+                    <div class="drill-table-header">
+                        <span>Date</span><span>Division</span><span>Product</span><span>Loss %</span><span>Status</span>
+                    </div>
+                    ${routeShipments.slice(0, 20).map(s => formatShipmentRow(s)).join('')}
+                </div>
+                <div class="drill-footer">${Math.min(20, routeShipments.length)} of ${routeShipments.length} shown</div>
+            `;
+            showDrillDown(page, '🛤️ ' + title, html);
+        });
+    });
+}
+
+// ── Pending Verifications ────────────────────────────────────
+
+function renderPendingVerifications(page, allShipments) {
+    const container = page.querySelector('#verificationList');
+    const badge = page.querySelector('#verifyBadge');
+    if (!container) return;
+
+    const pending = allShipments.filter(s =>
+        !s.verification || s.verification.status === 'pending'
+    );
+
+    if (badge) {
+        badge.textContent = String(pending.length);
+        badge.style.display = pending.length > 0 ? 'inline-flex' : 'none';
+    }
+
+    if (pending.length === 0) {
+        container.innerHTML = `
+            <div class="chart-empty" style="padding:var(--spacing-lg)">
+                <div style="font-size:2rem;margin-bottom:8px">✅</div>
+                <div>All shipments verified</div>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="verify-list">
+            ${pending.slice(0, 10).map(s => {
+        const status = getLossStatusDisplay(s.lossStatus);
+        const product = getProduct(s.product);
+        const dateStr = new Date(s.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        const lossStr = s.result?.evaluation?.lossPercent !== undefined
+            ? s.result.evaluation.lossPercent.toFixed(3) + '%' : '—';
+        const route = getRoute(s.routeId);
+        const routeStr = route
+            ? (getLocation(route.from)?.name || '').split(' ')[0] + '→' + (getLocation(route.to)?.name || '').split(' ')[0]
+            : '—';
+
+        return `
+                    <div class="verify-item" data-shipment-id="${s.id}">
+                        <div class="verify-info">
+                            <div class="verify-top">${status.icon} <strong>${product?.name || s.product}</strong> · ${s.division}</div>
+                            <div class="verify-meta">${dateStr} · ${routeStr} · Loss: <span style="color:${status.color};font-weight:600">${lossStr}</span></div>
+                        </div>
+                        <div class="verify-actions">
+                            <button class="verify-btn verify-approve" data-action="verify" data-id="${s.id}" title="Verify">✓</button>
+                            <button class="verify-btn verify-reject" data-action="reject" data-id="${s.id}" title="Reject">✗</button>
+                        </div>
+                    </div>
+                `;
+    }).join('')}
+        </div>
+        ${pending.length > 10 ? '<div class="drill-footer">' + (pending.length - 10) + ' more pending</div>' : ''}
+    `;
+
+    // Verify / Reject handlers
+    container.querySelectorAll('.verify-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            const shipment = allShipments.find(s => s.id === id);
+            if (!shipment) return;
+
+            let comment = '';
+            if (action === 'reject') {
+                comment = prompt('Reason for rejection:');
+                if (comment === null) return; // cancelled
+            }
+
+            const user = getCurrentUser();
+            shipment.verification = {
+                status: action === 'verify' ? 'verified' : 'rejected',
+                verifiedBy: user?.email || 'unknown',
+                verifiedAt: new Date().toISOString(),
+                comment: comment || '',
+            };
+
+            // Save to Firestore
+            await ShipmentService.save(shipment);
+
+            // Re-render verification list
+            renderPendingVerifications(page, allShipments);
         });
     });
 }
