@@ -445,18 +445,18 @@ function showVolConvResult(result) {
   let rows = '';
 
   // Input
-  rows += resultRow(`Volume at ${formatTemperature(result.tInput)}°C (input)`, formatVolume(result.vInput) + ' l');
+  rows += resultRow(`Volume at T₁ (${formatTemperature(result.tInput)}°C) — input`, formatVolume(result.vInput) + ' l');
   rows += '<hr class="result-divider">';
 
   // Densities
-  rows += resultRow('Density at 15°C', formatDensity(result.rho15));
-  rows += resultRow(`Density at ${formatTemperature(result.tInput)}°C`, formatDensity(result.rhoTInput));
-  rows += resultRow(`Density at ${formatTemperature(result.tTarget)}°C`, formatDensity(result.rhoTTarget));
+  rows += resultRow('ρ at 15°C', formatDensity(result.rho15));
+  rows += resultRow(`ρ at T₁ (${formatTemperature(result.tInput)}°C)`, formatDensity(result.rhoTInput));
+  rows += resultRow(`ρ at T₂ (${formatTemperature(result.tTarget)}°C)`, formatDensity(result.rhoTTarget));
   rows += '<hr class="result-divider">';
 
   // Volumes
   rows += resultRow('Volume at 15°C', formatVolume(result.v15) + ' l', 'accent');
-  rows += resultRow(`Volume at ${formatTemperature(result.tTarget)}°C`, formatVolume(result.vTarget) + ' l', 'accent');
+  rows += resultRow(`Volume at T₂ (${formatTemperature(result.tTarget)}°C)`, formatVolume(result.vTarget) + ' l', 'accent');
   rows += '<hr class="result-divider">';
 
   // Difference
