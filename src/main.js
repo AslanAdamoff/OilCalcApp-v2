@@ -192,8 +192,6 @@ function showApp() {
     renderTabBar();
     switchTab(currentTab);
 
-    // Swipe navigation
-    setupSwipeNavigation();
 
     // Notification bell setup
     setupNotifications();
@@ -285,46 +283,6 @@ function showPWABanner() {
     });
 }
 
-// ── Swipe Navigation ────────────────────────────────────────
-
-function setupSwipeNavigation() {
-    const container = document.getElementById('pageContainer');
-    if (!container) return;
-
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
-
-    container.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].clientX;
-        touchStartY = e.changedTouches[0].clientY;
-        touchStartTime = Date.now();
-    }, { passive: true });
-
-    container.addEventListener('touchend', (e) => {
-        const dx = e.changedTouches[0].clientX - touchStartX;
-        const dy = e.changedTouches[0].clientY - touchStartY;
-        const dt = Date.now() - touchStartTime;
-
-        // Must be fast enough, horizontal enough, and long enough
-        if (dt > 500) return;
-        if (Math.abs(dx) < 60) return;
-        if (Math.abs(dy) > Math.abs(dx) * 0.5) return;
-
-        const currentIndex = visibleTabs.findIndex(t => t.id === currentTab);
-        if (currentIndex < 0) return;
-
-        if (dx < 0 && currentIndex < visibleTabs.length - 1) {
-            // Swipe left → next tab
-            switchTab(visibleTabs[currentIndex + 1].id);
-            renderTabBar();
-        } else if (dx > 0 && currentIndex > 0) {
-            // Swipe right → previous tab
-            switchTab(visibleTabs[currentIndex - 1].id);
-            renderTabBar();
-        }
-    }, { passive: true });
-}
 
 // ── Notification System ──────────────────────────────────────
 
