@@ -35,6 +35,26 @@ export function createDualResult({ at15, atT, density15 = null, densityT = null 
     };
 }
 
+// ── Volume Conversion Result (Liters → Liters) ──────────────
+export function createVolConvResult({ vInput, tInput, tTarget, v15, vTarget, rho15, rhoTInput, rhoTTarget }) {
+    return {
+        id: uuid(),
+        vInput,       // V₁ at T₁
+        tInput,       // T₁
+        tTarget,      // T₂
+        v15,          // Volume at 15°C
+        vTarget,      // V₂ at T₂
+        rho15,        // Density at 15°C
+        rhoTInput,    // Density at T₁
+        rhoTTarget,   // Density at T₂
+        get difference() { return this.vTarget - this.vInput; },
+        get percentDifference() {
+            if (this.vInput === 0) return 0;
+            return (this.difference / this.vInput) * 100;
+        },
+    };
+}
+
 // ── Trip Point (user input) ──────────────────────────────────
 export function createTripPoint({
     name = '',
